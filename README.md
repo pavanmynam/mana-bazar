@@ -1,20 +1,24 @@
-# Mana Bazar REAL MODE - FULL PROPER CODE
+# 🛍️ Mana Bazar
 
-## Check chesina tarvatha fix chesam - Ippudu FULL code undhi
-Files:
-- src/App.jsx - FULL APP: 4 Roles, 4 Delivery Modes, Shop Add, Product Add with Image URL, Cart, Checkout, Admin, Delivery Boy, Subscription, Theme
-- src/supabaseClient.js - Real Supabase connection
-- supabase/schema.sql - 6 Tables: profiles, shops, products, delivery_boys, orders, subscriptions
-- index.html, src/main.jsx, src/index.css
+**All local shops in one app** – like Swiggy / Zomato, but for every kind of shop:
+Groceries, Medical, Bakery, Electrical, Stationery, Fruits & Vegetables, Restaurants and Dairy.
 
-## Run
-1. npm install
-2. .env lo VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY pettu (supabase.com -> New Project)
-3. Supabase SQL Editor lo supabase/schema.sql run chey
-4. npm run dev
+## 3 Logins
 
-## Features Covered
-Customer: Categories 10, Near Shops by Area, Products, Cart, 4 Delivery Modes, Payment UPI/COD/Direct Shop UPI
-Shop Owner: Shop Add Full Form, Product Add Photo+Price+Details, Own Delivery Boys Add, Subscription PRO/PREMIUM
-Delivery Boy: App Boy / Shop Boy, Online/Offline, Accept Order, OTP Deliver
-Admin: Approve Shops/Products/Boys, Control All, Subscription + Commission
+| Role | What they can do | Demo login |
+|---|---|---|
+| 🧑 **Customer** | Browse shops by category, search products, add to cart, place order (COD / UPI), track order live, cancel | `9999999999` / `1234` |
+| 🏪 **Shop Owner** | Register shop, accept/reject orders, update status (Accepted → Packed → Out for delivery → Delivered), add/edit/delete products, stock on/off, shop open/close, earnings | `8888888888` / `1234` |
+| 🛡️ **Admin** | Dashboard (sales, commission), approve/block shops, block users, see all orders, set delivery fee / free-delivery limit / commission % | `admin` / `admin123` |
+
+New customers and shop owners can register from the login screen. New shops need Admin approval.
+
+## Run locally
+```bash
+npm install
+npm run dev
+```
+
+## Tech
+React 19 + Vite. Data is stored in the browser (`localStorage`) through `src/store.js` – open the customer and shop owner in two tabs of the same browser to see orders update live.
+To make it work across different phones, replace `src/store.js` with a real backend (Supabase / Firebase).
