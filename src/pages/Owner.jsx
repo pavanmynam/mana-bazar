@@ -1,90 +1,132 @@
-import { useState, useEffect } from 'react'
-import {
-  useStore, CATEGORIES, updateShop, saveProduct, deleteProduct, setOrderStatus, money, timeAgo, ORDER_STEPS, STATUS_LABEL,
-} from '../store'
-import { StatusBadge, BottomNav, Stat } from './ui'
+import { useEffect, useRef, useState } from 'react'
+import { supabase, errMsg } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
+import { useLive, q, beep } from '../lib/useLive'
+import { catOf, money, timeAgo, mapsLink, STATUS_LABEL, ACTIVE } from '../lib/constants'
+import { StatusBadge, BottomNav, Stat, Img, Stars, Loading, Empty } from '../components/ui'
+import { TopBar } from '../components/TopBar'
+import { ShopForm, ProductForm } from '../components/forms'
 
-const NEXT_LABEL = { placed: 'Accept Order', accepted: 'Mark Packed', packed: 'Out for Delivery', out_for_delivery: 'Mark Delivered' }
+const NEXT = {
+  placed: ['accepted', 'Accept order'],
+  accepted: ['packed', 'Mark packed / ready'],
+  packed: ['out_for_delivery', 'Deliver myself'],
+  out_for_delivery: ['delivered', 'Mark delivered'],
+}
 
-export default function Owner({ user }) {
-  const { db } = useStore()
+export default function Owner() {
+  const { profile } = useAuth()
   const [tab, setTab] = useState('orders')
   useEffect(() => { window.scrollTo(0, 0) }, [tab])
-  const shop = db.shops.find((s) => s.id === user.shopId)
 
-  if (!shop) return <main className="page"><div className="empty">Shop not found</div></main>
+  const { data: shopRes, reload: reloadShop } = useLive(
+    async () => ({ shop: await q(supabase.from('shops').select('*').eq('owner_id', profile.id).order('created_at').limit(1).maybeSingle()) }),
+    [profile.id], ['shops'])
+  const shop = shopRes?.shop
+  const { data: orders } = useLive(
+    () => shop?.id ? q(supabase.from('orders').select('*').eq('shop_id', shop.id).order('created_at', { ascending: false }).limit(300)) : [],
+    [shop?.id], ['orders'])
 
-  if (shop.status !== 'approved') {
+  // beep when a new order arrives
+  const lastNew = useRef(null)
+  const newCount = (orders || []).filter((o) => o.status === 'placed').length
+  useEffect(() => {
+    if (lastNew.current !== null && newCount > lastNew.current) beep()
+    lastNew.current = newCount
+  }, [newCount])
+
+  if (!shopRes) return <Loading />
+  if (!shop) {
     return (
-      <main className="page">
-        <div className="card center">
-          <div className="logo-big">{shop.status === 'pending' ? '⏳' : '⛔'}</div>
-          <h2>{shop.name}</h2>
-          {shop.status === 'pending'
-            ? <p>Your shop is waiting for <b>Admin approval</b>. Once approved, customers can see your shop and place orders.</p>
-            : <p>Your shop has been <b>blocked</b> by Admin. Please contact Mana Bazar support.</p>}
-          <small className="muted">Tip (demo): login as Admin → Shops → Approve.</small>
-        </div>
-      </main>
+      <div className="app">
+        <TopBar subtitle="Shop Partner" />
+        <main className="page"><div className="warn">No shop found for your account. Create your shop below.</div><ShopForm onSaved={reloadShop} /></main>
+      </div>
     )
   }
 
-  const orders = db.orders.filter((o) => o.shopId === shop.id)
-  const newCount = orders.filter((o) => o.status === 'placed').length
-
+  const incomplete = !shop.lat || !shop.photo_url || !shop.address
   return (
-    <>
+    <div className="app">
+      <TopBar subtitle="Shop Partner" />
       <main className="page">
         <div className="owner-head">
-          <div>
-            <h2>{shop.icon} {shop.name}</h2>
-            <small className="muted">{CATEGORIES.find((c) => c.id === shop.category)?.name} · {shop.address}</small>
+          <div className="row-left">
+            <Img src={shop.photo_url} emoji={shop.icon} className="md round" />
+            <div>
+              <h2>{shop.name}</h2>
+              <small className="muted">{catOf(shop.category).name} · <Stars value={shop.rating_avg} count={shop.rating_count} /></small>
+            </div>
           </div>
-          <label className="switch-toggle">
-            <input type="checkbox" checked={shop.open} onChange={(e) => updateShop(shop.id, { open: e.target.checked })} />
-            <span className="slider" />
-            <b>{shop.open ? 'OPEN' : 'CLOSED'}</b>
-          </label>
+          {shop.status === 'approved' && (
+            <label className="switch-toggle">
+              <input type="checkbox" checked={shop.open} onChange={async (e) => { await supabase.from('shops').update({ open: e.target.checked }).eq('id', shop.id); reloadShop() }} />
+              <span className="slider" /><b>{shop.open ? 'OPEN' : 'CLOSED'}</b>
+            </label>
+          )}
         </div>
-        {tab === 'orders' && <Orders db={db} orders={orders} />}
-        {tab === 'products' && <Products db={db} shop={shop} />}
-        {tab === 'dashboard' && <Dashboard db={db} orders={orders} shop={shop} />}
-        {tab === 'shop' && <ShopSettings shop={shop} />}
+
+        {shop.status === 'pending' && (
+          <div className="warn">⏳ <b>Waiting for admin approval.</b> {incomplete ? 'Complete your shop details (photo, location, address) in the Shop tab so admin can approve faster.' : 'Your details are complete. Admin will approve soon.'} You can add products meanwhile.</div>
+        )}
+        {shop.status === 'blocked' && <div className="error">⛔ Your shop is blocked by admin. Customers can't see it. Please contact Mana Bazar support.</div>}
+
+        {tab === 'orders' && <Orders orders={orders} shop={shop} />}
+        {tab === 'products' && <Products shop={shop} />}
+        {tab === 'earnings' && <Earnings orders={orders || []} shop={shop} />}
+        {tab === 'shop' && <ShopForm shop={shop} onSaved={() => { reloadShop(); alert('Saved ✓') }} />}
       </main>
       <BottomNav tab={tab} setTab={setTab} items={[
-        ['orders', '📥', `Orders${newCount ? ` (${newCount})` : ''}`], ['products', '📦', 'Products'], ['dashboard', '📊', 'Earnings'], ['shop', '⚙️', 'Shop'],
+        ['orders', '📥', 'Orders', newCount], ['products', '📦', 'Products'], ['earnings', '📊', 'Earnings'], ['shop', '🏪', 'Shop', incomplete ? '!' : 0],
       ]} />
-    </>
+    </div>
   )
 }
 
-function Orders({ db, orders }) {
+function Orders({ orders, shop }) {
   const [filter, setFilter] = useState('active')
-  const list = orders.filter((o) =>
-    filter === 'active' ? !['delivered', 'cancelled', 'rejected'].includes(o.status) : ['delivered', 'cancelled', 'rejected'].includes(o.status))
+  if (!orders) return <Loading />
+  const list = orders.filter((o) => (filter === 'active' ? ACTIVE.includes(o.status) : !ACTIVE.includes(o.status)))
+
+  async function move(o, status) {
+    let otp = null
+    if (status === 'delivered') {
+      otp = prompt('Enter the 4-digit delivery OTP from the customer')
+      if (!otp) return
+    }
+    if (status === 'rejected' && !confirm('Reject this order?')) return
+    const { error } = await supabase.rpc('update_order_status', { p_id: o.id, p_status: status, p_otp: otp })
+    if (error) alert(errMsg(error))
+  }
+
   return (
     <>
       <div className="chips">
-        <button className={filter === 'active' ? 'active' : ''} onClick={() => setFilter('active')}>Active</button>
+        <button className={filter === 'active' ? 'active' : ''} onClick={() => setFilter('active')}>Active ({orders.filter((o) => ACTIVE.includes(o.status)).length})</button>
         <button className={filter === 'past' ? 'active' : ''} onClick={() => setFilter('past')}>Completed</button>
       </div>
-      {list.length === 0 && <div className="empty">No {filter} orders</div>}
+      {shop.status === 'approved' && !shop.open && <div className="warn">Your shop is CLOSED. Turn it ON to receive orders.</div>}
+      {list.length === 0 && <Empty icon="📭" title={`No ${filter} orders`} sub={filter === 'active' ? 'New orders will appear here with a sound 🔔' : ''} />}
       {list.map((o) => {
-        const cust = db.users.find((u) => u.id === o.customerId)
-        const i = ORDER_STEPS.indexOf(o.status)
-        const next = ORDER_STEPS[i + 1]
+        const next = NEXT[o.status]
+        const waitingRider = o.status === 'packed' && !o.delivery_id
+        const riderHasIt = o.status === 'out_for_delivery' && o.delivery_id
         return (
           <div key={o.id} className={'card order-card' + (o.status === 'placed' ? ' new' : '')}>
             <div className="row"><b>#{o.id}</b><StatusBadge s={o.status} /></div>
-            <small className="muted">{timeAgo(o.createdAt)} · {o.payment}</small>
-            <ul className="items">{o.items.map((it) => <li key={it.productId}>{it.emoji} {it.name} × <b>{it.qty}</b> <span>{money(it.price * it.qty)}</span></li>)}</ul>
-            <div className="row"><span>👤 {cust?.name} · 📞 {cust?.phone}</span><b>{money(o.total)}</b></div>
-            <small className="muted">📍 {o.address}</small>
+            <small className="muted">{timeAgo(o.created_at)} · {o.payment}</small>
+            <ul className="items">
+              {o.items.map((it) => <li key={it.id}><Img src={it.photo_url} emoji={it.emoji} className="xs" /> {it.name} <small>{it.unit}</small> × <b>{it.qty}</b><span>{money(it.price * it.qty)}</span></li>)}
+            </ul>
+            <div className="row"><span>👤 {o.customer_name} · <a href={`tel:${o.customer_phone}`}>📞 {o.customer_phone}</a></span><b>{money(o.total)}</b></div>
+            <small className="muted">📍 {o.address} · <a href={mapsLink(o.lat, o.lng, o.address)} target="_blank" rel="noreferrer">Map</a></small>
             {o.note && <small className="note">📝 {o.note}</small>}
-            {next && (
+            {waitingRider && <small className="info">🛵 Waiting for a delivery partner to pick up… or deliver yourself.</small>}
+            {riderHasIt && <small className="info">🛵 {o.delivery_name} ({o.delivery_phone}) is delivering this order.</small>}
+            {next && !riderHasIt && (
               <div className="actions">
-                {o.status === 'placed' && <button className="btn danger" onClick={() => confirm('Reject this order?') && setOrderStatus(o.id, 'rejected')}>Reject</button>}
-                <button className="btn primary" onClick={() => setOrderStatus(o.id, next)}>{NEXT_LABEL[o.status]} →</button>
+                {o.status === 'placed' && <button className="btn danger" onClick={() => move(o, 'rejected')}>Reject</button>}
+                <button className="btn primary" onClick={() => move(o, next[0])}>{next[1]} →</button>
               </div>
             )}
           </div>
@@ -94,58 +136,51 @@ function Orders({ db, orders }) {
   )
 }
 
-const empty = { name: '', price: '', mrp: '', unit: '', emoji: '📦' }
-
-function Products({ db, shop }) {
-  const products = db.products.filter((p) => p.shopId === shop.id)
+function Products({ shop }) {
+  const { data: products, reload } = useLive(
+    () => q(supabase.from('products').select('*').eq('shop_id', shop.id).order('subcategory').order('name')), [shop.id], ['products'])
   const [edit, setEdit] = useState(null)
+  const [text, setText] = useState('')
+  if (!products) return <Loading />
+  if (edit) return <ProductForm shop={shop} product={edit.id ? edit : null} onDone={() => { setEdit(null); reload() }} />
 
-  function save(e) {
-    e.preventDefault()
-    if (!edit.name || !edit.price) return alert('Name and price are required')
-    saveProduct({ ...edit, shopId: shop.id, price: Number(edit.price), mrp: Number(edit.mrp || edit.price) })
-    setEdit(null)
+  const list = products.filter((p) => p.name.toLowerCase().includes(text.toLowerCase()))
+  async function patch(p, row) {
+    const { error } = await supabase.from('products').update(row).eq('id', p.id)
+    if (error) alert(errMsg(error)); else reload()
+  }
+  async function del(p) {
+    if (!confirm(`Delete ${p.name}?`)) return
+    const { error } = await supabase.from('products').delete().eq('id', p.id)
+    if (error) alert(errMsg(error)); else reload()
   }
 
   return (
     <>
       <div className="row">
-        <h3 className="section-title">{products.length} Products</h3>
-        <button className="btn primary sm" onClick={() => setEdit({ ...empty })}>+ Add Product</button>
+        <h3 className="section-title">{products.length} products</h3>
+        <button className="btn primary sm" onClick={() => setEdit({})}>+ Add product</button>
       </div>
-      {edit && (
-        <form className="card form" onSubmit={save}>
-          <h3>{edit.id ? 'Edit Product' : 'New Product'}</h3>
-          <div className="grid2">
-            <label>Name<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="e.g. Basmati Rice" /></label>
-            <label>Icon (emoji)<input value={edit.emoji} onChange={(e) => setEdit({ ...edit, emoji: e.target.value })} maxLength={4} /></label>
-            <label>Selling Price ₹<input type="number" value={edit.price} onChange={(e) => setEdit({ ...edit, price: e.target.value })} /></label>
-            <label>MRP ₹<input type="number" value={edit.mrp} onChange={(e) => setEdit({ ...edit, mrp: e.target.value })} /></label>
-            <label>Unit / Size<input value={edit.unit} onChange={(e) => setEdit({ ...edit, unit: e.target.value })} placeholder="1 kg, 500 ml, 1 pc" /></label>
-          </div>
-          <div className="actions">
-            <button type="button" className="btn ghost" onClick={() => setEdit(null)}>Cancel</button>
-            <button className="btn primary">Save</button>
-          </div>
-        </form>
-      )}
-      <div className="products">
-        {products.map((p) => (
-          <div key={p.id} className={'product' + (p.inStock ? '' : ' oos')}>
-            <div className="p-emoji">{p.emoji}</div>
+      <div className="search"><span>🔍</span><input value={text} onChange={(e) => setText(e.target.value)} placeholder="Search your products" /></div>
+      {list.length === 0 && <Empty icon="📦" title="No products yet" sub="Add products with photos and prices" />}
+      <div className="plist">
+        {list.map((p) => (
+          <div key={p.id} className={'product' + (p.in_stock ? '' : ' oos')}>
+            <Img src={p.photo_url} emoji={p.emoji} className="md" />
             <div className="p-info">
               <b>{p.name}</b>
-              <small>{p.unit}</small>
+              <small>{p.subcategory} · {p.unit}</small>
               <div><span className="price">{money(p.price)}</span>{p.mrp > p.price && <s>{money(p.mrp)}</s>}</div>
+              {p.status !== 'approved' && <span className={'badge sh-' + (p.status === 'rejected' ? 'blocked' : 'pending')}>{p.status === 'pending' ? 'Waiting approval' : 'Rejected'}</span>}
             </div>
             <div className="p-actions">
               <label className="switch-toggle sm">
-                <input type="checkbox" checked={p.inStock} onChange={(e) => saveProduct({ id: p.id, inStock: e.target.checked })} />
-                <span className="slider" /><small>{p.inStock ? 'In stock' : 'Out'}</small>
+                <input type="checkbox" checked={p.in_stock} onChange={(e) => patch(p, { in_stock: e.target.checked })} />
+                <span className="slider" /><small>{p.in_stock ? 'In stock' : 'Out'}</small>
               </label>
               <div>
-                <button className="icon-btn" onClick={() => setEdit({ ...p })}>✏️</button>
-                <button className="icon-btn" onClick={() => confirm(`Delete ${p.name}?`) && deleteProduct(p.id)}>🗑️</button>
+                <button className="icon-btn" onClick={() => setEdit(p)}>✏️</button>
+                <button className="icon-btn" onClick={() => del(p)}>🗑️</button>
               </div>
             </div>
           </div>
@@ -155,26 +190,30 @@ function Products({ db, shop }) {
   )
 }
 
-function Dashboard({ db, orders }) {
+function Earnings({ orders }) {
+  const { data: settings } = useLive(() => q(supabase.from('settings').select('*').eq('id', 1).single()), [])
+  if (!settings) return <Loading />
   const delivered = orders.filter((o) => o.status === 'delivered')
-  const sales = delivered.reduce((s, o) => s + o.itemTotal, 0)
-  const commission = Math.round((sales * db.settings.commission) / 100)
+  const sales = delivered.reduce((s, o) => s + Number(o.item_total), 0)
+  const commission = Math.round((sales * Number(settings.commission)) / 100)
   const today = new Date().toDateString()
-  const todayOrders = orders.filter((o) => new Date(o.createdAt).toDateString() === today)
+  const todayDelivered = delivered.filter((o) => new Date(o.created_at).toDateString() === today)
+  const todaySales = todayDelivered.reduce((s, o) => s + Number(o.item_total), 0)
   return (
     <>
       <div className="stats">
-        <Stat icon="🧾" label="Total Orders" value={orders.length} />
-        <Stat icon="📅" label="Today's Orders" value={todayOrders.length} />
-        <Stat icon="✅" label="Delivered" value={delivered.length} tone="green" />
-        <Stat icon="💰" label="Total Sales" value={money(sales)} tone="orange" />
+        <Stat icon="📅" label="Today's sales" value={money(todaySales)} tone="orange" />
+        <Stat icon="🧾" label="Today's orders" value={todayDelivered.length} />
+        <Stat icon="✅" label="Total delivered" value={delivered.length} tone="green" />
+        <Stat icon="💰" label="Total sales" value={money(sales)} tone="green" />
       </div>
       <div className="card bill">
-        <div><span>Sales (delivered)</span><span>{money(sales)}</span></div>
-        <div><span>Mana Bazar commission ({db.settings.commission}%)</span><span>− {money(commission)}</span></div>
-        <div className="total"><span>Your Earnings</span><span>{money(sales - commission)}</span></div>
+        <b>Settlement</b>
+        <div><span>Sales (delivered orders)</span><span>{money(sales)}</span></div>
+        <div><span>Mana Bazar commission ({settings.commission}%)</span><span>− {money(commission)}</span></div>
+        <div className="total"><span>Your earnings</span><span>{money(sales - commission)}</span></div>
       </div>
-      <h3 className="section-title">Order status summary</h3>
+      <h3 className="section-title">Orders by status</h3>
       <div className="card">
         {Object.keys(STATUS_LABEL).map((s) => {
           const n = orders.filter((o) => o.status === s).length
@@ -183,31 +222,5 @@ function Dashboard({ db, orders }) {
         {orders.length === 0 && <small className="muted">No orders yet</small>}
       </div>
     </>
-  )
-}
-
-function ShopSettings({ shop }) {
-  const [f, setF] = useState({ name: shop.name, address: shop.address, phone: shop.phone, eta: shop.eta, icon: shop.icon, category: shop.category })
-  const [saved, setSaved] = useState(false)
-  const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
-  return (
-    <div className="card form">
-      <h3>Shop Details</h3>
-      <div className="grid2">
-        <label>Shop Name<input value={f.name} onChange={set('name')} /></label>
-        <label>Icon<input value={f.icon} onChange={set('icon')} maxLength={4} /></label>
-        <label>Category
-          <select value={f.category} onChange={set('category')}>
-            {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
-          </select>
-        </label>
-        <label>Phone<input value={f.phone} onChange={set('phone')} /></label>
-        <label>Delivery time (min)<input type="number" value={f.eta} onChange={set('eta')} /></label>
-      </div>
-      <label>Address<textarea rows={2} value={f.address} onChange={set('address')} /></label>
-      <button className="btn primary" onClick={() => { updateShop(shop.id, { ...f, eta: Number(f.eta) }); setSaved(true); setTimeout(() => setSaved(false), 1500) }}>
-        {saved ? 'Saved ✓' : 'Save Changes'}
-      </button>
-    </div>
   )
 }

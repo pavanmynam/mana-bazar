@@ -1,33 +1,42 @@
-import { useStore, logout } from './store'
+import { configured } from './lib/supabase'
+import { AuthProvider, useAuth } from './lib/auth'
 import Auth from './pages/Auth'
 import Customer from './pages/Customer'
 import Owner from './pages/Owner'
+import Delivery from './pages/Delivery'
 import Admin from './pages/Admin'
+import { Loading } from './components/ui'
 
 export default function App() {
-  const { db, session } = useStore()
-  const user = db.users.find((u) => u.id === session.userId)
+  if (!configured) return <NotConfigured />
+  return <AuthProvider><Shell /></AuthProvider>
+}
 
-  if (!user) return <Auth />
+function Shell() {
+  const { session, profile, loading, signOut } = useAuth()
+  if (loading) return <Loading />
+  if (!session || !profile) return <Auth />
+  if (profile.status === 'blocked') {
+    return (
+      <div className="center-page">
+        <div className="card center"><div className="empty-ico">⛔</div><h2>Account blocked</h2><p>Please contact Mana Bazar support.</p>
+          <button className="btn ghost" onClick={signOut}>Logout</button></div>
+      </div>
+    )
+  }
+  if (profile.role === 'owner') return <Owner />
+  if (profile.role === 'delivery') return <Delivery />
+  if (profile.role === 'admin') return <Admin />
+  return <Customer />
+}
 
+function NotConfigured() {
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">
-          <span className="logo">🛍️</span>
-          <div>
-            <b>Mana Bazar</b>
-            <small>{user.role === 'admin' ? 'Admin Panel' : user.role === 'owner' ? 'Shop Partner' : 'All shops, one app'}</small>
-          </div>
-        </div>
-        <div className="topbar-right">
-          <span className="hello">Hi, {user.name.split(' ')[0]}</span>
-          <button className="btn ghost sm" onClick={logout}>Logout</button>
-        </div>
-      </header>
-      {user.role === 'customer' && <Customer user={user} />}
-      {user.role === 'owner' && <Owner user={user} />}
-      {user.role === 'admin' && <Admin user={user} />}
+    <div className="center-page">
+      <div className="card">
+        <h2>🛍️ Mana Bazar – setup needed</h2>
+        <p>Supabase keys are missing. Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>.env</code> (local) or Vercel → Settings → Environment Variables, then redeploy.</p>
+      </div>
     </div>
   )
 }
