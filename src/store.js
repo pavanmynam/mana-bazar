@@ -31,39 +31,46 @@ export const STATUS_LABEL = {
 const uid = (p) => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3)
 
 function seed() {
-  const users = [
-    { id: 'u_admin', role: 'admin', name: 'Mana Bazar Admin', phone: 'admin', password: 'admin123', active: true },
-    { id: 'u_cust', role: 'customer', name: 'Ravi Kumar', phone: '9999999999', password: '1234', address: 'H.No 1-2-3, Main Road, Guntur', active: true },
-  ]
+  // No hardcoded admin or customer account — the first person to open the
+  // Admin tab creates the real admin login (see createFirstAdmin below), and
+  // customers create their own account from the login screen's "Create
+  // account" link. The sample shops below are real catalog/demo content for
+  // showing the app to prospective shop owners, not login credentials, so
+  // their owner accounts stay (a real person can still log into a sample
+  // shop to show the accept-order flow) — they're just no longer advertised
+  // on the login screen as a "demo" shortcut.
+  const users = []
+  // Guntur city center, used as the anchor point for seeded shop coordinates.
+  const CENTER = { lat: 16.3067, lng: 80.4365 }
   const shopsSeed = [
-    ['Sri Lakshmi Kirana', 'grocery', 'Brodipet, Guntur', '🛒', [
+    ['Sri Lakshmi Kirana', 'grocery', 'Brodipet, Guntur', '🛒', 0.004, -0.006, [
       ['Sona Masoori Rice', 1450, 1600, '25 kg', '🍚'], ['Toor Dal', 165, 180, '1 kg', '🫘'], ['Sunflower Oil', 145, 160, '1 L', '🛢️'],
       ['Sugar', 48, 52, '1 kg', '🧂'], ['Tata Salt', 28, 30, '1 kg', '🧂'], ['Red Chilli Powder', 90, 110, '250 g', '🌶️'], ['Tea Powder', 140, 155, '250 g', '🍵']]],
-    ['Apollo Medicals', 'medical', 'Arundelpet, Guntur', '💊', [
+    ['Apollo Medicals', 'medical', 'Arundelpet, Guntur', '💊', -0.009, 0.011, [
       ['Paracetamol 650', 30, 32, '15 tabs', '💊'], ['Cough Syrup', 110, 125, '100 ml', '🧴'], ['Band-Aid', 50, 55, '20 pcs', '🩹'],
       ['Digital Thermometer', 199, 299, '1 pc', '🌡️'], ['ORS Sachet', 22, 25, '1 pc', '🥤'], ['Face Masks', 99, 150, '10 pcs', '😷']]],
-    ['Karachi Bakery Point', 'bakery', 'Lakshmipuram, Guntur', '🎂', [
+    ['Karachi Bakery Point', 'bakery', 'Lakshmipuram, Guntur', '🎂', 0.015, 0.003, [
       ['Black Forest Cake', 450, 500, '500 g', '🎂'], ['Veg Puff', 20, 25, '1 pc', '🥟'], ['Osmania Biscuits', 120, 140, '400 g', '🍪'],
       ['Fruit Bread', 45, 50, '1 pack', '🍞'], ['Chocolate Pastry', 60, 70, '1 pc', '🍰'], ['Dil Kush', 30, 35, '1 pc', '🥐']]],
-    ['Venkateswara Electricals', 'electrical', 'Kothapet, Guntur', '💡', [
+    ['Venkateswara Electricals', 'electrical', 'Kothapet, Guntur', '💡', -0.018, -0.014, [
       ['LED Bulb 9W', 99, 150, '1 pc', '💡'], ['Extension Board', 349, 450, '4 socket', '🔌'], ['Ceiling Fan', 1899, 2500, '1 pc', '🌀'],
       ['Wire 1.5mm', 1250, 1500, '90 m', '🧵'], ['AA Batteries', 80, 100, '4 pcs', '🔋'], ['Tube Light 20W', 249, 320, '1 pc', '💡']]],
-    ['Vidya Stationery', 'stationery', 'Near Govt School, Guntur', '✏️', [
+    ['Vidya Stationery', 'stationery', 'Near Govt School, Guntur', '✏️', 0.021, -0.009, [
       ['Long Notebook', 45, 50, '200 pages', '📓'], ['Ball Pens', 50, 60, '10 pcs', '🖊️'], ['Geometry Box', 120, 150, '1 set', '📐'],
       ['A4 Paper Rim', 280, 320, '500 sheets', '📄'], ['Color Pencils', 90, 110, '24 pcs', '🖍️'], ['School Bag', 650, 899, '1 pc', '🎒']]],
-    ['Fresh Fruits & Veggies', 'fruits', 'Rythu Bazar, Guntur', '🍎', [
+    ['Fresh Fruits & Veggies', 'fruits', 'Rythu Bazar, Guntur', '🍎', -0.006, 0.019, [
       ['Banana', 50, 60, '1 dozen', '🍌'], ['Apple', 180, 220, '1 kg', '🍎'], ['Tomato', 30, 40, '1 kg', '🍅'],
       ['Onion', 40, 45, '1 kg', '🧅'], ['Mango (Banganapalli)', 120, 150, '1 kg', '🥭'], ['Green Chilli', 20, 25, '250 g', '🌶️']]],
-    ['Annapurna Tiffins', 'restaurant', 'Pattabhipuram, Guntur', '🍛', [
+    ['Annapurna Tiffins', 'restaurant', 'Pattabhipuram, Guntur', '🍛', 0.009, 0.024, [
       ['Idli (4 pcs)', 40, 45, '1 plate', '🍘'], ['Masala Dosa', 60, 70, '1 plate', '🫓'], ['Veg Meals', 120, 140, '1 plate', '🍛'],
       ['Chicken Biryani', 220, 250, '1 plate', '🍗'], ['Pesarattu', 55, 60, '1 plate', '🫓'], ['Filter Coffee', 25, 30, '1 cup', '☕']]],
-    ['Heritage Milk Point', 'dairy', 'Brindavan Gardens, Guntur', '🥛', [
+    ['Heritage Milk Point', 'dairy', 'Brindavan Gardens, Guntur', '🥛', -0.002, -0.021, [
       ['Toned Milk', 30, 30, '500 ml', '🥛'], ['Curd', 35, 38, '500 g', '🥣'], ['Paneer', 95, 110, '200 g', '🧀'],
       ['Ghee', 330, 360, '500 ml', '🧈'], ['Butter Milk', 15, 15, '200 ml', '🥤']]],
   ]
   const shops = []
   const products = []
-  shopsSeed.forEach(([name, category, address, icon, items], i) => {
+  shopsSeed.forEach(([name, category, address, icon, dLat, dLng, items], i) => {
     const ownerId = 'u_owner' + i
     const shopId = 's' + i
     users.push({
@@ -73,6 +80,7 @@ function seed() {
     shops.push({
       id: shopId, ownerId, name, category, address, icon, open: true, status: 'approved',
       rating: (4 + (i % 9) / 10).toFixed(1), eta: 20 + (i % 4) * 5, minOrder: 0, phone: '98480' + String(10000 + i * 111),
+      lat: CENTER.lat + dLat, lng: CENTER.lng + dLng,
     })
     items.forEach(([pname, price, mrp, unit, emoji], j) => {
       products.push({ id: `p${i}_${j}`, shopId, name: pname, price, mrp, unit, emoji, inStock: true })
@@ -80,15 +88,12 @@ function seed() {
   })
   // one pending shop so admin approval flow can be seen
   users.push({ id: 'u_owner_new', role: 'owner', name: 'Suresh', phone: '7777777777', password: '1234', shopId: 's_new', active: true })
-  shops.push({ id: 's_new', ownerId: 'u_owner_new', name: 'Suresh General Stores', category: 'grocery', address: 'Nallapadu, Guntur', icon: '🏪', open: true, status: 'pending', rating: '4.0', eta: 30, minOrder: 0, phone: '7777777777' })
+  shops.push({ id: 's_new', ownerId: 'u_owner_new', name: 'Suresh General Stores', category: 'grocery', address: 'Nallapadu, Guntur', icon: '🏪', open: true, status: 'pending', rating: '4.0', eta: 30, minOrder: 0, phone: '7777777777', lat: CENTER.lat - 0.03, lng: CENTER.lng + 0.01 })
 
-  const orders = [{
-    id: 'MB1001', customerId: 'u_cust', shopId: 's0',
-    items: [{ productId: 'p0_1', name: 'Toor Dal', price: 165, qty: 2, emoji: '🫘' }, { productId: 'p0_3', name: 'Sugar', price: 48, qty: 1, emoji: '🧂' }],
-    itemTotal: 378, deliveryFee: 20, total: 398, payment: 'COD', address: 'H.No 1-2-3, Main Road, Guntur',
-    status: 'placed', createdAt: Date.now() - 1000 * 60 * 12, history: [{ status: 'placed', at: Date.now() - 1000 * 60 * 12 }],
-  }]
-  return { users, shops, products, orders, settings: { deliveryFee: 20, freeDeliveryAbove: 499, commission: 5 }, orderSeq: 1001 }
+  // No seeded order — there's no seeded customer to own one anymore.
+  // Real orders appear here once a real customer registers and orders.
+  const orders = []
+  return { users, shops, products, orders, settings: { deliveryFee: 20, freeDeliveryAbove: 499, commission: 5 }, orderSeq: 1000 }
 }
 
 let db = load()
@@ -164,6 +169,17 @@ export function updateUser(id, patch) {
   db = { ...db, users: db.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) }; emit()
 }
 
+// ---------- admin: one-time setup, no hardcoded account ----------
+export function hasAdmin() { return db.users.some((u) => u.role === 'admin') }
+export function createFirstAdmin({ username, password }) {
+  if (hasAdmin()) return 'An admin account already exists — please log in instead'
+  if (!username.trim() || !password.trim()) return 'Please fill both fields'
+  const u = { id: uid('u_'), role: 'admin', name: 'Admin', phone: username.trim(), password, active: true }
+  db = { ...db, users: [...db.users, u] }
+  session = { ...session, userId: u.id }
+  emit(); return null
+}
+
 // ---------- shops & products ----------
 export function updateShop(id, patch) {
   db = { ...db, shops: db.shops.map((s) => (s.id === id ? { ...s, ...patch } : s)) }; emit()
@@ -223,6 +239,69 @@ export function setOrderStatus(id, status) {
 export function resetDemo() {
   localStorage.removeItem(KEY); localStorage.removeItem(SESSION)
   db = seed(); session = { userId: null, cart: null }; emit()
+}
+
+// ---------- WhatsApp order alert ----------
+// No backend/push server exists yet, so this opens a pre-filled WhatsApp
+// chat to the shop's number — the customer's one tap sends the alert.
+// Once a real backend exists, swap this for a server-triggered WhatsApp
+// Business API call so it sends automatically with no tap needed.
+export function toWaNumber(phone) {
+  const digits = String(phone || '').replace(/\D/g, '')
+  if (digits.length === 10) return '91' + digits
+  return digits
+}
+export function orderWhatsAppLink(order, shop) {
+  const lines = [
+    `🛍️ New Mana Bazar order #${order.id}`,
+    ...order.items.map((i) => `• ${i.name} x${i.qty}`),
+    `Total: ${money(order.total)} (${order.payment})`,
+    `Deliver to: ${order.address}`,
+    order.note ? `Note: ${order.note}` : null,
+    `Open your Mana Bazar Owner app to accept.`,
+  ].filter(Boolean)
+  const text = encodeURIComponent(lines.join('\n'))
+  return `https://wa.me/${toWaNumber(shop.phone)}?text=${text}`
+}
+
+// ---------- UPI QR for checkout ----------
+// Builds a standard upi://pay deep link (opens directly in GPay/PhonePe on
+// a phone) and a QR image of that same link (for scanning on a laptop,
+// or when the buyer is on a different device than their UPI app).
+export function upiPayLink({ upiId, payeeName, amount, orderId }) {
+  if (!upiId) return null
+  const params = new URLSearchParams({
+    pa: upiId, pn: payeeName, am: String(amount), cu: 'INR', tn: `Mana Bazar order ${orderId}`,
+  })
+  return `upi://pay?${params.toString()}`
+}
+export function upiQrImage(upiLink, size = 220) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(upiLink)}`
+}
+
+// ---------- distance & delivery time ----------
+// Haversine formula — straight-line distance in km between two lat/lng points.
+// Real road distance would need a maps/routing API; this is the honest
+// approximation a no-backend demo can do on its own.
+export function distanceKm(lat1, lng1, lat2, lng2) {
+  if ([lat1, lng1, lat2, lng2].some((v) => v == null)) return null
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+// Shop's own prep/pack time (shop.eta) plus a simple travel estimate from
+// distance (avg ~20 km/h local delivery speed), rounded to a 5-min slot.
+export function etaWithDistance(baseEta, km) {
+  if (km == null) return { min: baseEta, max: baseEta + 10 }
+  const travel = Math.round((km / 20) * 60)
+  const min = Math.ceil((baseEta + travel) / 5) * 5
+  return { min, max: min + 10 }
+}
+export function slotLabel(min) {
+  const d = new Date(Date.now() + min * 60000)
+  return d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
 }
 
 export const money = (n) => '₹' + Number(n || 0).toLocaleString('en-IN')

@@ -1,8 +1,26 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   useStore, CATEGORIES, updateShop, saveProduct, deleteProduct, setOrderStatus, money, timeAgo, ORDER_STEPS, STATUS_LABEL,
 } from '../store'
 import { StatusBadge, BottomNav, Stat } from './ui'
+
+// Short two-beep alert using the Web Audio API — no sound file to ship or load.
+function playNewOrderBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const beep = (start, freq) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.frequency.value = freq
+      osc.connect(gain); gain.connect(ctx.destination)
+      gain.gain.setValueAtTime(0.2, ctx.currentTime + start)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + 0.25)
+      osc.start(ctx.currentTime + start)
+      osc.stop(ctx.currentTime + start + 0.25)
+    }
+    beep(0, 880); beep(0.3, 880)
+  } catch { /* audio not available in this browser context — ignore */ }
+}
 
 const NEXT_LABEL = { placed: 'Accept Order', accepted: 'Mark Packed', packed: 'Out for Delivery', out_for_delivery: 'Mark Delivered' }
 
@@ -11,6 +29,18 @@ export default function Owner({ user }) {
   const [tab, setTab] = useState('orders')
   useEffect(() => { window.scrollTo(0, 0) }, [tab])
   const shop = db.shops.find((s) => s.id === user.shopId)
+
+  // Hooks must run on every render regardless of which branch we return below
+  // (e.g. admin approving the shop live, in another tab, re-renders this
+  // same mounted component) — so newCount/useRef/useEffect live here, above
+  // every early return, not after them.
+  const orders = shop ? db.orders.filter((o) => o.shopId === shop.id) : []
+  const newCount = orders.filter((o) => o.status === 'placed').length
+  const prevNewCount = useRef(newCount)
+  useEffect(() => {
+    if (shop?.status === 'approved' && newCount > prevNewCount.current) playNewOrderBeep()
+    prevNewCount.current = newCount
+  }, [newCount, shop?.status])
 
   if (!shop) return <main className="page"><div className="empty">Shop not found</div></main>
 
@@ -28,9 +58,6 @@ export default function Owner({ user }) {
       </main>
     )
   }
-
-  const orders = db.orders.filter((o) => o.shopId === shop.id)
-  const newCount = orders.filter((o) => o.status === 'placed').length
 
   return (
     <>
@@ -187,7 +214,10 @@ function Dashboard({ db, orders }) {
 }
 
 function ShopSettings({ shop }) {
-  const [f, setF] = useState({ name: shop.name, address: shop.address, phone: shop.phone, eta: shop.eta, icon: shop.icon, category: shop.category })
+  const [f, setF] = useState({
+    name: shop.name, address: shop.address, phone: shop.phone, eta: shop.eta, icon: shop.icon, category: shop.category,
+    upiId: shop.upiId || '',
+  })
   const [saved, setSaved] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   return (
@@ -204,7 +234,14 @@ function ShopSettings({ shop }) {
         <label>Phone<input value={f.phone} onChange={set('phone')} /></label>
         <label>Delivery time (min)<input type="number" value={f.eta} onChange={set('eta')} /></label>
       </div>
-      <label>Address<textarea rows={2} value={f.address} onChange={set('address')} /></label>
+      <label>
+        Your UPI ID (for customer UPI payments)
+        <input value={f.upiId} onChange={set('upiId')} placeholder="e.g. shopname@okaxis / 9876543210@ybl" />
+      </label>
+      <small className="muted">
+        Set this to the UPI ID linked to your own GPay/PhonePe. Customers paying by UPI will see your QR —
+        money goes straight to your account, Mana Bazar never touches it.
+      </small>
       <button className="btn primary" onClick={() => { updateShop(shop.id, { ...f, eta: Number(f.eta) }); setSaved(true); setTimeout(() => setSaved(false), 1500) }}>
         {saved ? 'Saved ✓' : 'Save Changes'}
       </button>

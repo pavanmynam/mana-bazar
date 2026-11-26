@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import {
   useStore, CATEGORIES, addToCart, cartTotals, placeOrder, setOrderStatus, updateUser,
-  money, timeAgo,
+  money, timeAgo, upiPayLink, upiQrImage, orderWhatsAppLink, distanceKm, etaWithDistance, slotLabel,
 } from '../store'
-import { StatusBadge, Tracker, BottomNav } from './ui'
+import { StatusBadge, Tracker, BottomNav, useGeolocation } from './ui'
 
 export default function Customer({ user }) {
   const { db, session } = useStore()
@@ -43,18 +43,33 @@ export default function Customer({ user }) {
 }
 
 function Home({ db, user, cat, setCat, q, setQ, openShop }) {
+  const geo = useGeolocation()
   const shops = db.shops.filter((s) => s.status === 'approved')
   const query = q.trim().toLowerCase()
   const matchingProducts = query
     ? db.products.filter((p) => p.name.toLowerCase().includes(query) && shops.some((s) => s.id === p.shopId))
     : []
-  const list = shops.filter((s) =>
+  let list = shops.filter((s) =>
     (!cat || s.category === cat) &&
     (!query || s.name.toLowerCase().includes(query) || matchingProducts.some((p) => p.shopId === s.id)))
+
+  const withDistance = list.map((s) => ({
+    ...s, km: geo.status === 'granted' ? distanceKm(geo.lat, geo.lng, s.lat, s.lng) : null,
+  }))
+  list = geo.status === 'granted'
+    ? [...withDistance].sort((a, b) => (a.km ?? 999) - (b.km ?? 999))
+    : withDistance
 
   return (
     <>
       <div className="deliver-to">📍 Deliver to <b>{user.address || 'Add address in Profile'}</b></div>
+      {geo.status === 'denied' && (
+        <div className="warn" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>Location off — shops sorted by name, not distance.</span>
+          <button className="btn ghost sm" onClick={geo.retry}>Try again</button>
+        </div>
+      )}
+      {geo.status === 'asking' && <div className="muted" style={{ padding: '8px 0' }}>📍 Finding shops near you…</div>}
       <div className="search">
         <span>🔍</span>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search shops, rice, medicines, cake..." />
@@ -90,6 +105,7 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
         {list.map((s) => {
           const c = CATEGORIES.find((x) => x.id === s.category)
           const hits = matchingProducts.filter((p) => p.shopId === s.id)
+          const etaWindow = etaWithDistance(s.eta, s.km)
           return (
             <button key={s.id} className={'shop-card' + (s.open ? '' : ' closed')} onClick={() => openShop(s.id)}>
               <div className="shop-img" style={{ background: c?.color }}>{s.icon}</div>
@@ -98,7 +114,8 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
                 <small>{c?.name} · {s.address}</small>
                 <div className="meta">
                   <span className="rating">★ {s.rating}</span>
-                  <span>{s.eta}-{s.eta + 10} min</span>
+                  {s.km != null && <span>📍 {s.km < 1 ? Math.round(s.km * 1000) + ' m' : s.km.toFixed(1) + ' km'}</span>}
+                  <span>🕒 by {slotLabel(etaWindow.max)}</span>
                   {!s.open && <span className="closed-tag">Closed now</span>}
                 </div>
                 {hits.length > 0 && <small className="hits">Has: {hits.slice(0, 3).map((p) => p.name).join(', ')}</small>}
@@ -171,15 +188,18 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
   const [address, setAddress] = useState(user.address || '')
   const [payment, setPayment] = useState('COD')
   const [note, setNote] = useState('')
+  const [upiConfirmed, setUpiConfirmed] = useState(false)
   if (!cart) return <div className="empty big">🛒<p>Your cart is empty</p><small>Add items from any shop to get started</small></div>
 
   const shop = db.shops.find((s) => s.id === cart.shopId)
   const t = cartTotals(cart, db.settings)
   const products = db.products
+  const upiReady = payment !== 'UPI' || upiConfirmed
 
   function order() {
     if (!address.trim()) return alert('Please enter delivery address')
     if (!shop.open) return alert('Shop is closed now')
+    if (payment === 'UPI' && !upiConfirmed) return alert("Please confirm you've completed the UPI payment first")
     if (!user.address) updateUser(user.id, { address })
     const id = placeOrder({ address, payment, note })
     onPlaced(id)
@@ -205,12 +225,15 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
         <label>Delivery Address<textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} /></label>
         <label>Note for shop (optional)<input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. less spicy, call before delivery" /></label>
         <div className="pay">
-          {[['COD', '💵 Cash on Delivery'], ['UPI', '📱 UPI on Delivery']].map(([v, l]) => (
+          {[['COD', '💵 Cash on Delivery'], ['UPI', '📱 Pay by UPI']].map(([v, l]) => (
             <label key={v} className={'radio' + (payment === v ? ' active' : '')}>
               <input type="radio" checked={payment === v} onChange={() => setPayment(v)} />{l}
             </label>
           ))}
         </div>
+        {payment === 'UPI' && (
+          <UpiCheckout shop={shop} amount={t.total} confirmed={upiConfirmed} setConfirmed={setUpiConfirmed} />
+        )}
       </div>
       <div className="card bill">
         <div><span>Item total</span><span>{money(t.itemTotal)}</span></div>
@@ -218,8 +241,34 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
         {t.deliveryFee > 0 && <small>Add {money(db.settings.freeDeliveryAbove - t.itemTotal)} more for free delivery</small>}
         <div className="total"><span>To Pay</span><span>{money(t.total)}</span></div>
       </div>
-      <button className="btn primary block lg" onClick={order}>Place Order · {money(t.total)}</button>
+      <button className="btn primary block lg" disabled={!upiReady} onClick={order}>
+        {payment === 'UPI' && !upiConfirmed ? 'Confirm payment above first' : `Place Order · ${money(t.total)}`}
+      </button>
     </>
+  )
+}
+
+function UpiCheckout({ shop, amount, confirmed, setConfirmed }) {
+  if (!shop.upiId) {
+    return <div className="warn">This shop hasn't set up UPI yet — please choose Cash on Delivery.</div>
+  }
+  const link = upiPayLink({ upiId: shop.upiId, payeeName: shop.name, amount, orderId: shop.id })
+  return (
+    <div className="card" style={{ marginTop: 10 }}>
+      <p className="muted" style={{ marginTop: 0 }}>Scan with any UPI app, or tap to open one directly. Money goes straight to {shop.name} — Mana Bazar never holds it.</p>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+        <img src={upiQrImage(link)} alt="UPI QR code" width={140} height={140} style={{ borderRadius: 8, border: '1px solid #eee' }} />
+        <div style={{ flex: 1, minWidth: 160 }}>
+          <a className="btn primary sm" href={link} style={{ display: 'inline-block', marginBottom: 8 }}>Open UPI app</a>
+          <div><small className="muted">UPI ID: {shop.upiId}</small></div>
+          <div><small className="muted">Amount: {money(amount)}</small></div>
+        </div>
+      </div>
+      <label className="radio" style={{ marginTop: 10 }}>
+        <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+        I've completed the UPI payment
+      </label>
+    </div>
   )
 }
 
@@ -256,6 +305,12 @@ function TrackOrder({ db, id, back }) {
         {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mana Bazar.</div>}
         <Tracker o={o} />
         <small className="muted">Live updates: when the shop owner changes status, it shows here.</small>
+        {o.status === 'placed' && (
+          <a className="btn block" style={{ marginTop: 10, background: '#25D366', color: '#fff' }}
+            href={orderWhatsAppLink(o, shop)} target="_blank" rel="noopener noreferrer">
+            📲 Notify shop on WhatsApp
+          </a>
+        )}
       </div>
       <div className="card">
         {o.items.map((i) => <div key={i.productId} className="cart-row"><span>{i.emoji} {i.name} × {i.qty}</span><b>{money(i.price * i.qty)}</b></div>)}

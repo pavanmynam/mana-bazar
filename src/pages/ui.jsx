@@ -1,4 +1,26 @@
+import { useState, useEffect } from 'react'
 import { ORDER_STEPS, STATUS_LABEL } from '../store'
+
+// Browser geolocation, asked for once and cached in memory for the session.
+// status: 'idle' | 'asking' | 'granted' | 'denied' | 'unsupported'
+export function useGeolocation() {
+  const [state, setState] = useState({ status: 'idle', lat: null, lng: null })
+
+  function request() {
+    if (!('geolocation' in navigator)) return setState({ status: 'unsupported', lat: null, lng: null })
+    setState((s) => ({ ...s, status: 'asking' }))
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setState({ status: 'granted', lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => setState({ status: 'denied', lat: null, lng: null }),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60000 },
+    )
+  }
+
+  // Ask once automatically on first mount of whichever screen uses this.
+  useEffect(() => { request() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { ...state, retry: request }
+}
 
 export function StatusBadge({ s }) {
   return <span className={'badge st-' + s}>{STATUS_LABEL[s] || s}</span>

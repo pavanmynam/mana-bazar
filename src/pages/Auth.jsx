@@ -1,25 +1,29 @@
 import { useState } from 'react'
-import { CATEGORIES, login, registerCustomer, registerOwner, resetDemo } from '../store'
+import { CATEGORIES, login, registerCustomer, registerOwner, createFirstAdmin, resetDemo, useStore } from '../store'
 
 const ROLES = [
-  { id: 'customer', label: 'Customer', icon: '🧑', demo: ['9999999999', '1234'] },
-  { id: 'owner', label: 'Shop Owner', icon: '🏪', demo: ['8888888888', '1234'] },
-  { id: 'admin', label: 'Admin', icon: '🛡️', demo: ['admin', 'admin123'] },
+  { id: 'customer', label: 'Customer', icon: '🧑' },
+  { id: 'owner', label: 'Shop Owner', icon: '🏪' },
+  { id: 'admin', label: 'Admin', icon: '🛡️' },
 ]
 
 export default function Auth() {
+  const { db } = useStore()
+  const adminExists = db.users.some((u) => u.role === 'admin')
   const [role, setRole] = useState('customer')
   const [mode, setMode] = useState('login')
   const [f, setF] = useState({ phone: '', password: '', name: '', address: '', shopName: '', category: 'grocery' })
   const [err, setErr] = useState('')
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const r = ROLES.find((x) => x.id === role)
+  const adminSetup = role === 'admin' && !adminExists
 
   function submit(e) {
     e.preventDefault()
     setErr('')
     let msg
-    if (mode === 'login') msg = login(f.phone, f.password, role)
+    if (adminSetup) msg = createFirstAdmin({ username: f.phone, password: f.password })
+    else if (mode === 'login') msg = login(f.phone, f.password, role)
     else if (!f.name || !f.phone || !f.password) msg = 'Please fill all fields'
     else if (role === 'customer') msg = registerCustomer(f)
     else if (!f.shopName || !f.address) msg = 'Please fill shop name and address'
@@ -46,15 +50,24 @@ export default function Auth() {
           ))}
         </div>
 
-        <h2>{mode === 'login' ? `${r.label} Login` : role === 'owner' ? 'Register your Shop' : 'Create Account'}</h2>
+        <h2>
+          {adminSetup ? 'Create Admin Account'
+            : mode === 'login' ? `${r.label} Login`
+              : role === 'owner' ? 'Register your Shop' : 'Create Account'}
+        </h2>
+        {adminSetup && (
+          <p className="muted" style={{ marginTop: -4 }}>
+            No admin account exists yet. Choose your own username and password — this becomes the only admin login.
+          </p>
+        )}
 
-        {mode === 'register' && (
+        {mode === 'register' && !adminSetup && (
           <label>Your Name<input value={f.name} onChange={set('name')} placeholder="Full name" /></label>
         )}
         <label>{role === 'admin' ? 'Username' : 'Mobile Number'}
-          <input value={f.phone} onChange={set('phone')} placeholder={role === 'admin' ? 'admin' : '10-digit mobile'} inputMode={role === 'admin' ? 'text' : 'numeric'} />
+          <input value={f.phone} onChange={set('phone')} placeholder={role === 'admin' ? 'choose a username' : '10-digit mobile'} inputMode={role === 'admin' ? 'text' : 'numeric'} />
         </label>
-        <label>Password<input type="password" value={f.password} onChange={set('password')} placeholder="Password" /></label>
+        <label>Password<input type="password" value={f.password} onChange={set('password')} placeholder={adminSetup ? 'choose a password' : 'Password'} /></label>
 
         {mode === 'register' && role === 'owner' && (
           <>
@@ -73,7 +86,9 @@ export default function Auth() {
         )}
 
         {err && <div className="error">{err}</div>}
-        <button className="btn primary block">{mode === 'login' ? 'Login' : 'Register'}</button>
+        <button className="btn primary block">
+          {adminSetup ? 'Create Admin Account' : mode === 'login' ? 'Login' : 'Register'}
+        </button>
 
         {role !== 'admin' && (
           <p className="switch">
@@ -83,15 +98,10 @@ export default function Auth() {
             </a>
           </p>
         )}
-
-        {mode === 'login' && (
-          <div className="demo">
-            <span>Demo: <b>{r.demo[0]}</b> / <b>{r.demo[1]}</b></span>
-            <button type="button" className="btn ghost sm" onClick={() => setF({ ...f, phone: r.demo[0], password: r.demo[1] })}>Fill</button>
-          </div>
-        )}
       </form>
-      <button className="reset-link" onClick={() => confirm('Reset all demo data?') && resetDemo()}>Reset demo data</button>
+      <button className="reset-link" onClick={() => confirm('This clears all real shops, orders and accounts and brings back only the sample catalog. Continue?') && resetDemo()}>
+        Reset to sample catalog
+      </button>
     </div>
   )
 }
