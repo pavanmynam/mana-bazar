@@ -28,3 +28,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Android build output and signing keys (never commit keys)
+android/
+*.jks
+*.keystore

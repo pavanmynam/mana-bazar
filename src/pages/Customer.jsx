@@ -5,6 +5,7 @@ import {
 } from '../store'
 import { StatusBadge, Tracker, BottomNav, useGeolocation } from './ui'
 import Scanner from './Scanner'
+import { LegalLinks, deletionRequestLinks } from './Legal'
 
 // A shop QR poster opens the site as /?shop=<id>.
 function shopFromUrl() {
@@ -381,7 +382,35 @@ function Profile({ user }) {
           {saved ? 'Saved ✓' : 'Save'}
         </button>
       </div>
+      <DeleteMyAccount phone={user.phone} />
+      <LegalLinks />
     </>
+  )
+}
+
+// Play Store requires an in-app way to ask for account deletion.
+export function DeleteMyAccount({ phone }) {
+  const [open, setOpen] = useState(false)
+  const l = deletionRequestLinks(phone)
+  return (
+    <div className="card" style={{ marginTop: 14 }}>
+      {!open ? (
+        <button className="btn ghost block" onClick={() => setOpen(true)}>Delete my account</button>
+      ) : (
+        <>
+          <b>Delete your account?</b>
+          <p className="muted" style={{ margin: '6px 0 10px' }}>
+            Send us the request below. We delete your login, name, phone and address within 7 days.
+            Order records needed for tax are kept as the law requires. <a href="/delete-account">Details</a>
+          </p>
+          <div className="actions">
+            <a className="btn" href={l.whatsapp} target="_blank" rel="noreferrer">WhatsApp request</a>
+            <a className="btn" href={l.mail}>Email request</a>
+            <button className="btn ghost" onClick={() => setOpen(false)}>Cancel</button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

@@ -3,8 +3,15 @@ import Auth from './pages/Auth'
 import Customer from './pages/Customer'
 import Owner from './pages/Owner'
 import Admin from './pages/Admin'
+import Legal, { legalSlugFromPath } from './pages/Legal'
 
 export default function App() {
+  const legal = legalSlugFromPath(window.location.pathname)
+  if (legal) return <Legal slug={legal} />
+  return <MainApp />
+}
+
+function MainApp() {
   const { db, session, ready } = useStore()
   const user = db.users.find((u) => u.id === session.userId)
 

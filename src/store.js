@@ -396,8 +396,12 @@ export function upiPayLink({ upiId, payeeName, amount, orderId }) {
   return `upi://pay?${params.toString()}`
 }
 // Link a customer opens by scanning a shop's QR poster.
+// Inside the Android app the page runs on https://localhost, so QR links always
+// point at the public website (which also opens the app's shop page).
+export const SITE_URL = 'https://mana-bazar-rho.vercel.app'
 export function shopLink(shopId) {
-  return `${window.location.origin}/?shop=${shopId}`
+  const origin = window.location.hostname === 'localhost' ? SITE_URL : window.location.origin
+  return `${origin}/?shop=${shopId}`
 }
 
 export function upiQrImage(upiLink, size = 220) {

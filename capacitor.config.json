@@ -1,0 +1,8 @@
+{
+  "appId": "com.manabazar.app",
+  "appName": "Mana Bazar",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

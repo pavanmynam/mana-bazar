@@ -5,6 +5,8 @@ import {
 } from '../store'
 import { StatusBadge, BottomNav, Stat } from './ui'
 import Scanner, { lookupBarcode } from './Scanner'
+import { LegalLinks } from './Legal'
+import { DeleteMyAccount } from './Customer'
 
 // Short two-beep alert using the Web Audio API — no sound file to ship or load.
 function playNewOrderBeep() {
@@ -77,7 +79,7 @@ export default function Owner({ user }) {
         {tab === 'orders' && <Orders db={db} orders={orders} />}
         {tab === 'products' && <Products db={db} shop={shop} />}
         {tab === 'dashboard' && <Dashboard db={db} orders={orders} shop={shop} />}
-        {tab === 'shop' && <ShopSettings shop={shop} />}
+        {tab === 'shop' && <><ShopSettings shop={shop} /><DeleteMyAccount phone={user.phone} /><LegalLinks /></>}
       </main>
       <BottomNav tab={tab} setTab={setTab} items={[
         ['orders', '📥', `Orders${newCount ? ` (${newCount})` : ''}`], ['products', '📦', 'Products'], ['dashboard', '📊', 'Earnings'], ['shop', '⚙️', 'Shop'],
