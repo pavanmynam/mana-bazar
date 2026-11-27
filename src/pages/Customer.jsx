@@ -131,6 +131,7 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
 function ShopPage({ db, cart, shopId, back }) {
   const shop = db.shops.find((s) => s.id === shopId)
   const [q, setQ] = useState('')
+  if (!shop) return <><button className="back" onClick={back}>← Back</button><div className="empty">Shop not found</div></>
   const products = db.products.filter((p) => p.shopId === shopId && p.name.toLowerCase().includes(q.toLowerCase()))
   const qty = (pid) => (cart?.shopId === shopId ? cart.items.find((x) => x.productId === pid)?.qty || 0 : 0)
   const c = CATEGORIES.find((x) => x.id === shop.category)
@@ -150,7 +151,7 @@ function ShopPage({ db, cart, shopId, back }) {
           </div>
         </div>
       </div>
-      {!shop.open && <div className="warn">This shop is closed right now. You can browse but can't order.</div>}
+      {!shop.open && <div className="warn">{shop.closedMessage || "This shop is closed right now. You can browse but can't order."}</div>}
       <div className="search"><span>🔍</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search in ${shop.name}`} /></div>
       <div className="products">
         {products.length === 0 && <div className="empty">No products yet</div>}
@@ -189,20 +190,26 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
   const [payment, setPayment] = useState('COD')
   const [note, setNote] = useState('')
   const [upiConfirmed, setUpiConfirmed] = useState(false)
+  const [placing, setPlacing] = useState(false)
   if (!cart) return <div className="empty big">🛒<p>Your cart is empty</p><small>Add items from any shop to get started</small></div>
 
   const shop = db.shops.find((s) => s.id === cart.shopId)
+  if (!shop) return <div className="empty big">🛒<p>This shop is no longer available</p><button className="btn" onClick={() => addToCart({ shopId: null }, 0)}>Clear cart</button></div>
   const t = cartTotals(cart, db.settings)
   const products = db.products
   const upiReady = payment !== 'UPI' || upiConfirmed
 
-  function order() {
+  async function order() {
+    if (placing) return
     if (!address.trim()) return alert('Please enter delivery address')
     if (!shop.open) return alert('Shop is closed now')
     if (payment === 'UPI' && !upiConfirmed) return alert("Please confirm you've completed the UPI payment first")
+    setPlacing(true)
     if (!user.address) updateUser(user.id, { address })
-    const id = placeOrder({ address, payment, note })
-    onPlaced(id)
+    const res = await placeOrder({ address, payment, note })
+    setPlacing(false)
+    if (res.error) return alert(res.error)
+    onPlaced(res.id)
   }
 
   return (
@@ -241,8 +248,8 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
         {t.deliveryFee > 0 && <small>Add {money(db.settings.freeDeliveryAbove - t.itemTotal)} more for free delivery</small>}
         <div className="total"><span>To Pay</span><span>{money(t.total)}</span></div>
       </div>
-      <button className="btn primary block lg" disabled={!upiReady} onClick={order}>
-        {payment === 'UPI' && !upiConfirmed ? 'Confirm payment above first' : `Place Order · ${money(t.total)}`}
+      <button className="btn primary block lg" disabled={!upiReady || placing} onClick={order}>
+        {placing ? 'Placing order…' : payment === 'UPI' && !upiConfirmed ? 'Confirm payment above first' : `Place Order · ${money(t.total)}`}
       </button>
     </>
   )
@@ -284,7 +291,7 @@ function MyOrders({ db, user, open }) {
           <button key={o.id} className="card order-card" onClick={() => open(o.id)}>
             <div className="row"><b>{shop?.icon} {shop?.name}</b><StatusBadge s={o.status} /></div>
             <small>{o.items.map((i) => `${i.name} × ${i.qty}`).join(', ')}</small>
-            <div className="row"><small>#{o.id} · {timeAgo(o.createdAt)}</small><b>{money(o.total)}</b></div>
+            <div className="row"><small>#{o.code} · {timeAgo(o.createdAt)}</small><b>{money(o.total)}</b></div>
           </button>
         )
       })}
@@ -300,7 +307,7 @@ function TrackOrder({ db, id, back }) {
     <>
       <button className="back" onClick={back}>← Back</button>
       <div className="card">
-        <div className="row"><h2>Order #{o.id}</h2><StatusBadge s={o.status} /></div>
+        <div className="row"><h2>Order #{o.code}</h2><StatusBadge s={o.status} /></div>
         <p className="muted">{shop?.icon} {shop?.name} · 📞 {shop?.phone}</p>
         {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mana Bazar.</div>}
         <Tracker o={o} />
@@ -316,6 +323,7 @@ function TrackOrder({ db, id, back }) {
         {o.items.map((i) => <div key={i.productId} className="cart-row"><span>{i.emoji} {i.name} × {i.qty}</span><b>{money(i.price * i.qty)}</b></div>)}
         <div className="bill">
           <div><span>Delivery</span><span>{o.deliveryFee ? money(o.deliveryFee) : 'FREE'}</span></div>
+          {o.discount > 0 && <div><span>Discount</span><span>− {money(o.discount)}</span></div>}
           <div className="total"><span>Total ({o.payment})</span><span>{money(o.total)}</span></div>
         </div>
         <p className="muted">📍 {o.address}</p>

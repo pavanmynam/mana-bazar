@@ -114,7 +114,7 @@ function AllOrders({ db }) {
               const cust = db.users.find((u) => u.id === o.customerId)
               return (
                 <tr key={o.id}>
-                  <td><b>#{o.id}</b><br /><small className="muted">{timeAgo(o.createdAt)}</small></td>
+                  <td><b>#{o.code}</b><br /><small className="muted">{timeAgo(o.createdAt)}</small></td>
                   <td>{shop?.icon} {shop?.name}</td>
                   <td>{cust?.name}<br /><small className="muted">{cust?.phone}</small></td>
                   <td>{money(o.total)}<br /><small className="muted">{o.payment}</small></td>

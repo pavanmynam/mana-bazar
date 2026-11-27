@@ -5,9 +5,12 @@ import Owner from './pages/Owner'
 import Admin from './pages/Admin'
 
 export default function App() {
-  const { db, session } = useStore()
+  const { db, session, ready } = useStore()
   const user = db.users.find((u) => u.id === session.userId)
 
+  if (!ready || (session.userId && !user)) {
+    return <div className="auth"><div className="auth-hero"><div className="logo-big">🛍️</div><h1>Mana Bazar</h1><p>Loading…</p></div></div>
+  }
   if (!user) return <Auth />
 
   return (
@@ -28,6 +31,9 @@ export default function App() {
       {user.role === 'customer' && <Customer user={user} />}
       {user.role === 'owner' && <Owner user={user} />}
       {user.role === 'admin' && <Admin user={user} />}
+      {user.role === 'delivery' && (
+        <main className="page"><div className="card center"><div className="logo-big">🛵</div><h2>Delivery Partner app</h2><p>Coming soon. Admin will contact you once your account is approved.</p></div></main>
+      )}
     </div>
   )
 }

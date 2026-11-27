@@ -1,14 +1,15 @@
 import { useSyncExternalStore } from 'react'
+import { supabase } from './supabase'
 
-// Simple data layer backed by localStorage.
-// All reads/writes go through this file, so it can later be swapped for a real backend (Supabase / Firebase).
+// Data layer backed by Supabase (real database, shared by every phone).
+// Pages read a cached snapshot through useStore(); every write goes to
+// Supabase, and real-time updates refresh the cache for everyone.
 
-const KEY = 'manabazar_db_v1'
-const SESSION = 'manabazar_session_v1'
-
-export const CATEGORIES = [
-  { id: 'grocery', name: 'Groceries', te: 'కిరాణా', icon: '🛒', color: '#e8f5e9' },
-  { id: 'medical', name: 'Medical', te: 'మెడికల్', icon: '💊', color: '#e3f2fd' },
+// Fallback list so the login screen has icons before the database answers.
+// The real list (admin can add more) is loaded from the `categories` table.
+export let CATEGORIES = [
+  { id: 'grocery', name: 'Groceries / Kirana', te: 'కిరాణా', icon: '🛒', color: '#e8f5e9' },
+  { id: 'medical', name: 'Medical Shops', te: 'మెడికల్', icon: '💊', color: '#e3f2fd' },
   { id: 'bakery', name: 'Bakery', te: 'బేకరీ', icon: '🎂', color: '#fff3e0' },
   { id: 'electrical', name: 'Electrical', te: 'ఎలక్ట్రికల్', icon: '💡', color: '#fffde7' },
   { id: 'stationery', name: 'Stationery', te: 'స్టేషనరీ', icon: '✏️', color: '#f3e5f5' },
@@ -22,175 +23,291 @@ export const STATUS_LABEL = {
   placed: 'Order Placed',
   accepted: 'Accepted by Shop',
   packed: 'Packed / Ready',
+  picked_up: 'Picked up by Rider',
   out_for_delivery: 'Out for Delivery',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
   rejected: 'Rejected by Shop',
 }
 
-const uid = (p) => p + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-3)
+const CART_KEY = 'manabazar_cart_v2'
 
-function seed() {
-  // No hardcoded admin or customer account — the first person to open the
-  // Admin tab creates the real admin login (see createFirstAdmin below), and
-  // customers create their own account from the login screen's "Create
-  // account" link. The sample shops below are real catalog/demo content for
-  // showing the app to prospective shop owners, not login credentials, so
-  // their owner accounts stay (a real person can still log into a sample
-  // shop to show the accept-order flow) — they're just no longer advertised
-  // on the login screen as a "demo" shortcut.
-  const users = []
-  // Guntur city center, used as the anchor point for seeded shop coordinates.
-  const CENTER = { lat: 16.3067, lng: 80.4365 }
-  const shopsSeed = [
-    ['Sri Lakshmi Kirana', 'grocery', 'Brodipet, Guntur', '🛒', 0.004, -0.006, [
-      ['Sona Masoori Rice', 1450, 1600, '25 kg', '🍚'], ['Toor Dal', 165, 180, '1 kg', '🫘'], ['Sunflower Oil', 145, 160, '1 L', '🛢️'],
-      ['Sugar', 48, 52, '1 kg', '🧂'], ['Tata Salt', 28, 30, '1 kg', '🧂'], ['Red Chilli Powder', 90, 110, '250 g', '🌶️'], ['Tea Powder', 140, 155, '250 g', '🍵']]],
-    ['Apollo Medicals', 'medical', 'Arundelpet, Guntur', '💊', -0.009, 0.011, [
-      ['Paracetamol 650', 30, 32, '15 tabs', '💊'], ['Cough Syrup', 110, 125, '100 ml', '🧴'], ['Band-Aid', 50, 55, '20 pcs', '🩹'],
-      ['Digital Thermometer', 199, 299, '1 pc', '🌡️'], ['ORS Sachet', 22, 25, '1 pc', '🥤'], ['Face Masks', 99, 150, '10 pcs', '😷']]],
-    ['Karachi Bakery Point', 'bakery', 'Lakshmipuram, Guntur', '🎂', 0.015, 0.003, [
-      ['Black Forest Cake', 450, 500, '500 g', '🎂'], ['Veg Puff', 20, 25, '1 pc', '🥟'], ['Osmania Biscuits', 120, 140, '400 g', '🍪'],
-      ['Fruit Bread', 45, 50, '1 pack', '🍞'], ['Chocolate Pastry', 60, 70, '1 pc', '🍰'], ['Dil Kush', 30, 35, '1 pc', '🥐']]],
-    ['Venkateswara Electricals', 'electrical', 'Kothapet, Guntur', '💡', -0.018, -0.014, [
-      ['LED Bulb 9W', 99, 150, '1 pc', '💡'], ['Extension Board', 349, 450, '4 socket', '🔌'], ['Ceiling Fan', 1899, 2500, '1 pc', '🌀'],
-      ['Wire 1.5mm', 1250, 1500, '90 m', '🧵'], ['AA Batteries', 80, 100, '4 pcs', '🔋'], ['Tube Light 20W', 249, 320, '1 pc', '💡']]],
-    ['Vidya Stationery', 'stationery', 'Near Govt School, Guntur', '✏️', 0.021, -0.009, [
-      ['Long Notebook', 45, 50, '200 pages', '📓'], ['Ball Pens', 50, 60, '10 pcs', '🖊️'], ['Geometry Box', 120, 150, '1 set', '📐'],
-      ['A4 Paper Rim', 280, 320, '500 sheets', '📄'], ['Color Pencils', 90, 110, '24 pcs', '🖍️'], ['School Bag', 650, 899, '1 pc', '🎒']]],
-    ['Fresh Fruits & Veggies', 'fruits', 'Rythu Bazar, Guntur', '🍎', -0.006, 0.019, [
-      ['Banana', 50, 60, '1 dozen', '🍌'], ['Apple', 180, 220, '1 kg', '🍎'], ['Tomato', 30, 40, '1 kg', '🍅'],
-      ['Onion', 40, 45, '1 kg', '🧅'], ['Mango (Banganapalli)', 120, 150, '1 kg', '🥭'], ['Green Chilli', 20, 25, '250 g', '🌶️']]],
-    ['Annapurna Tiffins', 'restaurant', 'Pattabhipuram, Guntur', '🍛', 0.009, 0.024, [
-      ['Idli (4 pcs)', 40, 45, '1 plate', '🍘'], ['Masala Dosa', 60, 70, '1 plate', '🫓'], ['Veg Meals', 120, 140, '1 plate', '🍛'],
-      ['Chicken Biryani', 220, 250, '1 plate', '🍗'], ['Pesarattu', 55, 60, '1 plate', '🫓'], ['Filter Coffee', 25, 30, '1 cup', '☕']]],
-    ['Heritage Milk Point', 'dairy', 'Brindavan Gardens, Guntur', '🥛', -0.002, -0.021, [
-      ['Toned Milk', 30, 30, '500 ml', '🥛'], ['Curd', 35, 38, '500 g', '🥣'], ['Paneer', 95, 110, '200 g', '🧀'],
-      ['Ghee', 330, 360, '500 ml', '🧈'], ['Butter Milk', 15, 15, '200 ml', '🥤']]],
-  ]
-  const shops = []
-  const products = []
-  shopsSeed.forEach(([name, category, address, icon, dLat, dLng, items], i) => {
-    const ownerId = 'u_owner' + i
-    const shopId = 's' + i
-    users.push({
-      id: ownerId, role: 'owner', name: name + ' Owner', phone: i === 0 ? '8888888888' : '80000000' + String(i).padStart(2, '0'),
-      password: '1234', shopId, active: true,
-    })
-    shops.push({
-      id: shopId, ownerId, name, category, address, icon, open: true, status: 'approved',
-      rating: (4 + (i % 9) / 10).toFixed(1), eta: 20 + (i % 4) * 5, minOrder: 0, phone: '98480' + String(10000 + i * 111),
-      lat: CENTER.lat + dLat, lng: CENTER.lng + dLng,
-    })
-    items.forEach(([pname, price, mrp, unit, emoji], j) => {
-      products.push({ id: `p${i}_${j}`, shopId, name: pname, price, mrp, unit, emoji, inStock: true })
-    })
-  })
-  // one pending shop so admin approval flow can be seen
-  users.push({ id: 'u_owner_new', role: 'owner', name: 'Suresh', phone: '7777777777', password: '1234', shopId: 's_new', active: true })
-  shops.push({ id: 's_new', ownerId: 'u_owner_new', name: 'Suresh General Stores', category: 'grocery', address: 'Nallapadu, Guntur', icon: '🏪', open: true, status: 'pending', rating: '4.0', eta: 30, minOrder: 0, phone: '7777777777', lat: CENTER.lat - 0.03, lng: CENTER.lng + 0.01 })
-
-  // No seeded order — there's no seeded customer to own one anymore.
-  // Real orders appear here once a real customer registers and orders.
-  const orders = []
-  return { users, shops, products, orders, settings: { deliveryFee: 20, freeDeliveryAbove: 499, commission: 5 }, orderSeq: 1000 }
+// ---------- mapping database rows → the shape the pages use ----------
+const num = (v) => (v == null ? v : Number(v))
+function mapShop(r) {
+  return {
+    id: r.id, ownerId: r.owner_id, name: r.name, category: r.category_id, address: r.address,
+    icon: r.icon, open: r.is_open, closedMessage: r.closed_message, status: r.status,
+    kycStatus: r.kyc_status, rating: r.rating_count ? Number(r.rating_avg).toFixed(1) : 'New',
+    ratingCount: r.rating_count, eta: r.eta_minutes, minOrder: num(r.min_order), phone: r.phone,
+    upiId: r.upi_id, lat: r.lat, lng: r.lng, isSample: r.is_sample,
+  }
+}
+function mapProduct(r) {
+  return {
+    id: r.id, shopId: r.shop_id, name: r.name, description: r.description, price: num(r.price),
+    mrp: num(r.mrp ?? r.price), unit: r.unit, emoji: r.emoji, imageUrl: r.image_url, inStock: r.in_stock,
+  }
+}
+function mapOrder(r) {
+  return {
+    id: r.id, code: r.code, customerId: r.customer_id, shopId: r.shop_id, partnerId: r.delivery_partner_id,
+    items: (r.items || []).map((i) => ({ productId: i.product_id, name: i.name, price: num(i.price), qty: i.qty, unit: i.unit, emoji: i.emoji })),
+    itemTotal: num(r.item_total), deliveryFee: num(r.delivery_fee), discount: num(r.discount), total: num(r.total),
+    payment: String(r.payment_method || '').toUpperCase(), paymentStatus: r.payment_status,
+    address: r.address, note: r.note, status: r.status, createdAt: Date.parse(r.created_at),
+    history: (r.history || []).map((h) => ({ status: h.status, at: Date.parse(h.at) })),
+  }
+}
+function mapProfile(r, shops) {
+  return {
+    id: r.id, role: r.role, name: r.name || '', phone: r.phone, address: r.address, active: r.active,
+    shopId: shops.find((s) => s.ownerId === r.id)?.id,
+  }
 }
 
-let db = load()
-let session = loadSession()
+// ---------- cached snapshot ----------
+const emptyDb = { users: [], shops: [], products: [], orders: [], settings: { deliveryFee: 20, freeDeliveryAbove: 499, commission: 5 } }
+let db = emptyDb
+let session = { userId: null, cart: loadCart() }
+let ready = false
+let adminExists = true
+let state = { db, session, ready, adminExists }
 const listeners = new Set()
 
-function load() {
-  try {
-    const raw = localStorage.getItem(KEY)
-    if (raw) return JSON.parse(raw)
-  } catch { /* ignore */ }
-  const s = seed()
-  persist(s)
-  return s
-}
-function loadSession() {
-  try { return JSON.parse(localStorage.getItem(SESSION)) || { userId: null, cart: null } } catch { return { userId: null, cart: null } }
-}
-function persist(d) {
-  try { localStorage.setItem(KEY, JSON.stringify(d)) } catch { /* ignore */ }
+function loadCart() {
+  try { return JSON.parse(localStorage.getItem(CART_KEY)) || null } catch { return null }
 }
 function emit() {
-  persist(db)
-  try { localStorage.setItem(SESSION, JSON.stringify(session)) } catch { /* ignore */ }
-  state = { db, session }
+  try { localStorage.setItem(CART_KEY, JSON.stringify(session.cart)) } catch { /* ignore */ }
+  state = { db, session, ready, adminExists }
   listeners.forEach((l) => l())
-}
-let state = { db, session }
-
-// sync across tabs (e.g. customer in one tab, shop owner in another)
-if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key === KEY || e.key === SESSION) {
-      db = load(); session = loadSession(); state = { db, session }
-      listeners.forEach((l) => l())
-    }
-  })
 }
 
 export function useStore() {
   return useSyncExternalStore((l) => { listeners.add(l); return () => listeners.delete(l) }, () => state)
 }
 
+function fail(error, fallback = 'Something went wrong, please try again') {
+  console.error(error)
+  return (error && error.message) || fallback
+}
+function report(error) {
+  if (error) alert(fail(error))
+}
+
+// Load everything this user is allowed to see (RLS filters it on the server).
+let loading = null
+async function refresh() {
+  if (loading) return loading
+  loading = (async () => {
+    const signedIn = !!session.userId
+    const [cats, cfg, shops, products, orders, profiles, adm] = await Promise.all([
+      supabase.from('categories').select('*').eq('active', true).order('sort'),
+      supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
+      supabase.from('shops').select('*').order('created_at'),
+      supabase.from('products').select('*').order('created_at'),
+      signedIn ? supabase.from('orders').select('*').order('created_at', { ascending: false }) : { data: [] },
+      signedIn ? supabase.from('profiles').select('*') : { data: [] },
+      supabase.rpc('admin_exists'),
+    ])
+    for (const r of [cats, cfg, shops, products, orders, profiles]) if (r.error) console.error(r.error)
+    if (cats.data?.length) {
+      CATEGORIES = cats.data.map((c) => ({ id: c.id, name: c.name, te: c.name_te, icon: c.icon, color: c.color, group: c.group_name, kind: c.kind }))
+    }
+    const mappedShops = (shops.data || []).map(mapShop)
+    db = {
+      shops: mappedShops,
+      products: (products.data || []).map(mapProduct),
+      orders: (orders.data || []).map(mapOrder),
+      users: (profiles.data || []).map((p) => mapProfile(p, mappedShops)),
+      settings: cfg.data
+        ? { deliveryFee: num(cfg.data.delivery_fee), freeDeliveryAbove: num(cfg.data.free_delivery_above), commission: num(cfg.data.commission_percent) }
+        : emptyDb.settings,
+    }
+    if (!adm.error) adminExists = !!adm.data
+    ready = true
+    emit()
+  })()
+  try { await loading } finally { loading = null }
+}
+
+// Real-time: when orders / shops / products change anywhere, reload.
+let channel = null
+let refreshTimer = null
+function scheduleRefresh() {
+  clearTimeout(refreshTimer)
+  refreshTimer = setTimeout(refresh, 300)
+}
+function subscribe() {
+  if (channel) supabase.removeChannel(channel)
+  channel = supabase.channel('mana-bazar-live')
+  for (const table of ['orders', 'shops', 'products']) {
+    channel.on('postgres_changes', { event: '*', schema: 'public', table }, scheduleRefresh)
+  }
+  channel.subscribe()
+}
+
+if (typeof window !== 'undefined') {
+  supabase.auth.getSession().then(({ data }) => {
+    session = { ...session, userId: data.session?.user?.id || null }
+    refresh(); subscribe()
+  })
+  supabase.auth.onAuthStateChange((_event, s) => {
+    const id = s?.user?.id || null
+    if (id !== session.userId) {
+      session = { ...session, userId: id }
+      emit(); refresh(); subscribe()
+    }
+  })
+  // Phones often sleep the tab; reload fresh data when the user comes back.
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRefresh() })
+}
+
 // ---------- auth ----------
-export function login(phone, password, role) {
-  const u = db.users.find((x) => x.phone === phone.trim() && x.password === password && x.role === role)
-  if (!u) return 'Wrong phone / password for this login type'
-  if (!u.active) return 'Your account is blocked. Contact admin.'
-  session = { ...session, userId: u.id }
-  emit()
+// Logins use mobile number + password. Supabase Auth needs an email, so we
+// build a private one from the number and login type. The same number can
+// therefore have a customer login and a shop-owner login.
+function loginEmail(id, role) {
+  const clean = String(id || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '')
+  return `${clean}.${role}@users.manabazar.app`
+}
+function checkPhone(phone) {
+  const digits = String(phone || '').replace(/\D/g, '')
+  if (digits.length !== 10) return 'Please enter a valid 10-digit mobile number'
   return null
 }
-export function logout() { session = { userId: null, cart: null }; emit() }
-
-export function registerCustomer({ name, phone, password, address }) {
-  if (db.users.some((u) => u.phone === phone && u.role === 'customer')) return 'Phone already registered'
-  const u = { id: uid('u_'), role: 'customer', name, phone, password, address, active: true }
-  db = { ...db, users: [...db.users, u] }
-  session = { ...session, userId: u.id }
-  emit(); return null
+function checkPassword(pw) {
+  return !pw || pw.length < 6 ? 'Password must be at least 6 characters' : null
 }
-export function registerOwner({ name, phone, password, shopName, category, address }) {
-  if (db.users.some((u) => u.phone === phone && u.role === 'owner')) return 'Phone already registered'
-  const shopId = uid('s_')
-  const u = { id: uid('u_'), role: 'owner', name, phone, password, shopId, active: true }
+
+export async function login(phone, password, role) {
+  if (role !== 'admin') { const bad = checkPhone(phone); if (bad) return bad }
+  const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail(phone, role), password })
+  if (error) return 'Wrong mobile number / password for this login type'
+  const { data: prof } = await supabase.from('profiles').select('role, active').eq('id', data.user.id).maybeSingle()
+  if (prof && !prof.active) { await supabase.auth.signOut(); return 'Your account is blocked. Contact admin.' }
+  if (prof && prof.role !== role) { await supabase.auth.signOut(); return 'This account is not a ' + role + ' account' }
+  session = { ...session, userId: data.user.id }
+  await refresh()
+  return null
+}
+
+export async function logout() {
+  await supabase.auth.signOut()
+  session = { userId: null, cart: null }
+  db = { ...emptyDb, shops: db.shops, products: db.products, settings: db.settings }
+  emit()
+}
+
+async function signUp({ phone, password, role, name, address }) {
+  const { data, error } = await supabase.auth.signUp({
+    email: loginEmail(phone, role === 'admin' ? 'admin' : role),
+    password,
+    options: { data: { role: role === 'admin' ? 'customer' : role, name, phone, address } },
+  })
+  if (error) {
+    if (/registered|exists/i.test(error.message)) return { error: 'This number is already registered — please login' }
+    return { error: fail(error) }
+  }
+  if (!data.session) return { error: 'Account created but login is pending email confirmation. Ask admin to turn off "Confirm email" in Supabase.' }
+  session = { ...session, userId: data.user.id }
+  return { user: data.user }
+}
+
+export async function registerCustomer({ name, phone, password, address }) {
+  const bad = checkPhone(phone) || checkPassword(password)
+  if (bad) return bad
+  const r = await signUp({ phone, password, role: 'customer', name, address })
+  if (r.error) return r.error
+  await refresh()
+  return null
+}
+
+export async function registerOwner({ name, phone, password, shopName, category, address }) {
+  const bad = checkPhone(phone) || checkPassword(password)
+  if (bad) return bad
+  const r = await signUp({ phone, password, role: 'owner', name, address })
+  if (r.error) return r.error
   const cat = CATEGORIES.find((c) => c.id === category)
-  const shop = { id: shopId, ownerId: u.id, name: shopName, category, address, icon: cat?.icon || '🏪', open: true, status: 'pending', rating: '4.0', eta: 30, minOrder: 0, phone }
-  db = { ...db, users: [...db.users, u], shops: [...db.shops, shop] }
-  session = { ...session, userId: u.id }
-  emit(); return null
-}
-export function updateUser(id, patch) {
-  db = { ...db, users: db.users.map((u) => (u.id === id ? { ...u, ...patch } : u)) }; emit()
+  const { error } = await supabase.from('shops').insert({
+    name: shopName, category_id: category, address, phone, icon: cat?.icon || '🏪',
+  })
+  if (error) return fail(error)
+  await refresh()
+  return null
 }
 
-// ---------- admin: one-time setup, no hardcoded account ----------
-export function hasAdmin() { return db.users.some((u) => u.role === 'admin') }
-export function createFirstAdmin({ username, password }) {
-  if (hasAdmin()) return 'An admin account already exists — please log in instead'
-  if (!username.trim() || !password.trim()) return 'Please fill both fields'
-  const u = { id: uid('u_'), role: 'admin', name: 'Admin', phone: username.trim(), password, active: true }
-  db = { ...db, users: [...db.users, u] }
-  session = { ...session, userId: u.id }
-  emit(); return null
+export function hasAdmin() { return adminExists }
+export async function createFirstAdmin({ username, password }) {
+  if (adminExists) return 'An admin account already exists — please log in instead'
+  if (!String(username).trim()) return 'Please choose a username'
+  const bad = checkPassword(password)
+  if (bad) return bad
+  const r = await signUp({ phone: username, password, role: 'admin', name: 'Admin' })
+  if (r.error) return r.error
+  const { data, error } = await supabase.rpc('claim_first_admin')
+  if (error) return fail(error)
+  if (!data) { await supabase.auth.signOut(); return 'An admin account already exists — please log in instead' }
+  await refresh()
+  return null
+}
+
+export async function updateUser(id, patch) {
+  const row = {}
+  if ('name' in patch) row.name = patch.name
+  if ('address' in patch) row.address = patch.address
+  if ('active' in patch) row.active = patch.active
+  const { error } = await supabase.from('profiles').update(row).eq('id', id)
+  report(error)
+  await refresh()
 }
 
 // ---------- shops & products ----------
-export function updateShop(id, patch) {
-  db = { ...db, shops: db.shops.map((s) => (s.id === id ? { ...s, ...patch } : s)) }; emit()
+const SHOP_FIELDS = {
+  name: 'name', address: 'address', phone: 'phone', icon: 'icon', category: 'category_id', open: 'is_open',
+  eta: 'eta_minutes', upiId: 'upi_id', status: 'status', kycStatus: 'kyc_status', closedMessage: 'closed_message',
+  minOrder: 'min_order', lat: 'lat', lng: 'lng',
 }
-export function saveProduct(p) {
-  if (p.id) db = { ...db, products: db.products.map((x) => (x.id === p.id ? { ...x, ...p } : x)) }
-  else db = { ...db, products: [...db.products, { ...p, id: uid('p_'), inStock: true }] }
-  emit()
+export async function updateShop(id, patch) {
+  const row = {}
+  for (const [k, v] of Object.entries(patch)) if (SHOP_FIELDS[k]) row[SHOP_FIELDS[k]] = v
+  if ('upi_id' in row && !row.upi_id) row.upi_id = null
+  const { error } = await supabase.from('shops').update(row).eq('id', id)
+  report(error)
+  await refresh()
 }
-export function deleteProduct(id) { db = { ...db, products: db.products.filter((p) => p.id !== id) }; emit() }
-export function updateSettings(patch) { db = { ...db, settings: { ...db.settings, ...patch } }; emit() }
+
+export async function saveProduct(p) {
+  const row = {}
+  if ('name' in p) row.name = p.name
+  if ('price' in p) row.price = p.price
+  if ('mrp' in p) row.mrp = p.mrp
+  if ('unit' in p) row.unit = p.unit || '1 pc'
+  if ('emoji' in p) row.emoji = p.emoji || '📦'
+  if ('inStock' in p) row.in_stock = p.inStock
+  let error
+  if (p.id) {
+    row.updated_at = new Date().toISOString()
+    ;({ error } = await supabase.from('products').update(row).eq('id', p.id))
+  } else {
+    ;({ error } = await supabase.from('products').insert({ ...row, shop_id: p.shopId }))
+  }
+  report(error)
+  await refresh()
+}
+export async function deleteProduct(id) {
+  const { error } = await supabase.from('products').delete().eq('id', id)
+  report(error)
+  await refresh()
+}
+export async function updateSettings(patch) {
+  const { error } = await supabase.from('settings').update({
+    delivery_fee: patch.deliveryFee, free_delivery_above: patch.freeDeliveryAbove, commission_percent: patch.commission,
+  }).eq('id', 1)
+  report(error)
+  await refresh()
+}
 
 // ---------- cart (one shop at a time, like Swiggy) ----------
 export function addToCart(product, delta) {
@@ -214,31 +331,31 @@ export function cartTotals(cart, settings) {
 }
 
 // ---------- orders ----------
-export function placeOrder({ address, payment, note }) {
+// The server re-calculates prices, delivery fee and discount, so nobody
+// can change the amount from the browser. Returns { id } or { error }.
+export async function placeOrder({ address, payment, note, promoCode, lat, lng }) {
   const cart = session.cart
-  if (!cart) return null
-  const t = cartTotals(cart, db.settings)
-  const seq = db.orderSeq + 1
-  const order = {
-    id: 'MB' + seq, customerId: session.userId, shopId: cart.shopId, items: cart.items,
-    ...t, payment, address, note, status: 'placed', createdAt: Date.now(), history: [{ status: 'placed', at: Date.now() }],
-  }
-  db = { ...db, orderSeq: seq, orders: [order, ...db.orders] }
+  if (!cart) return { error: 'Cart is empty' }
+  const { data, error } = await supabase.rpc('place_order', {
+    p_shop_id: cart.shopId,
+    p_items: cart.items.map((i) => ({ product_id: i.productId, qty: i.qty })),
+    p_address: address,
+    p_lat: lat ?? null,
+    p_lng: lng ?? null,
+    p_payment_method: String(payment).toLowerCase(),
+    p_note: note || null,
+    p_promo_code: promoCode || null,
+  })
+  if (error) return { error: fail(error) }
   session = { ...session, cart: null }
   emit()
-  return order.id
+  await refresh()
+  return { id: data.id, code: data.code }
 }
-export function setOrderStatus(id, status) {
-  db = {
-    ...db,
-    orders: db.orders.map((o) => (o.id === id ? { ...o, status, history: [...o.history, { status, at: Date.now() }] } : o)),
-  }
-  emit()
-}
-
-export function resetDemo() {
-  localStorage.removeItem(KEY); localStorage.removeItem(SESSION)
-  db = seed(); session = { userId: null, cart: null }; emit()
+export async function setOrderStatus(id, status) {
+  const { error } = await supabase.from('orders').update({ status }).eq('id', id)
+  report(error)
+  await refresh()
 }
 
 // ---------- WhatsApp order alert ----------
@@ -253,7 +370,7 @@ export function toWaNumber(phone) {
 }
 export function orderWhatsAppLink(order, shop) {
   const lines = [
-    `🛍️ New Mana Bazar order #${order.id}`,
+    `🛍️ New Mana Bazar order #${order.code || order.id}`,
     ...order.items.map((i) => `• ${i.name} x${i.qty}`),
     `Total: ${money(order.total)} (${order.payment})`,
     `Deliver to: ${order.address}`,
