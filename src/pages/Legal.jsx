@@ -5,7 +5,7 @@ import POLICIES from '../legal.json'
 export const BUSINESS = {
   name: 'Mana Bazar',
   owner: 'Prashanthi Pamarthi',
-  address: 'Flat 705, Tower B07, Sahabhavana Township, Bandlaguda, Nagole, Hyderabad, Telangana 500068',
+  address: 'Flat 705, 7th Floor, Tower B07, Sahabhavana Township, Beside DMart, Anand Nagar Circle, Bandlaguda, Nagole, Hyderabad, Telangana 500068',
   phone: '+91 96661 83665',
   phoneRaw: '919666183665',
   email: 'pavan.mynam@gmail.com',
