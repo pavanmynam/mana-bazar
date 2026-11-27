@@ -13,6 +13,11 @@ Groceries, Medical, Bakery, Electrical, Stationery, Fruits & Vegetables, Restaur
 
 The app still ships with a **sample catalog** of 8 shops (grocery, medical, bakery, etc.) with real-looking products, so the app isn't empty on first open and you have something to show prospective shop owners. These are content, not login shortcuts — nobody needs to "log in as a demo shop owner" to use the app; register your own account for that. Use **"Reset to sample catalog"** on the login screen to wipe all real data and start over from just the sample catalog, if you're still testing.
 
+## 🚀 Going live (real version)
+- Roadmap & what's built: [`docs/ROADMAP.md`](docs/ROADMAP.md)
+- Database setup (Supabase): [`docs/SUPABASE_SETUP.md`](docs/SUPABASE_SETUP.md) — runs [`supabase/schema.sql`](supabase/schema.sql) + [`supabase/seed.sql`](supabase/seed.sql)
+- Payments (Razorpay): [`docs/RAZORPAY_SETUP.md`](docs/RAZORPAY_SETUP.md)
+
 ## Run locally
 ```bash
 npm install
