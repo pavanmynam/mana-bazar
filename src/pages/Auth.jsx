@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CATEGORIES, login, registerCustomer, registerOwner, createFirstAdmin, useStore } from '../store'
+import { LegalLinks } from './Legal'
 
 const ROLES = [
   { id: 'customer', label: 'Customer', icon: '🧑' },
@@ -105,7 +106,13 @@ export default function Auth() {
             </a>
           </p>
         )}
+        {mode === 'register' && (
+          <p className="muted" style={{ fontSize: 12, textAlign: 'center' }}>
+            By registering you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
+          </p>
+        )}
       </form>
+      <LegalLinks />
     </div>
   )
 }

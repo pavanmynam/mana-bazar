@@ -1,0 +1,210 @@
+[
+ {
+  "title": "Terms & Conditions",
+  "intro": "These Terms govern your use of the Mana Bazar website and app (\"Platform\"), operated by <b>Prashanthi Pamarthi (proprietor, trading as Mana Bazar)</b>, <b>Flat 705, 7th Floor, Tower B07, Sahabhavana Township, Beside DMart, Anand Nagar Circle, Bandlaguda, Nagole, Hyderabad, Telangana 500068</b> (\"Mana Bazar\", \"we\", \"us\"). By creating an account or placing an order you agree to these Terms.",
+  "sections": [
+   {
+    "h": "1. What Mana Bazar is",
+    "p": [
+     "Mana Bazar is an online marketplace that connects customers with independent local shops (\"Sellers\"). Sellers list, price and sell their own products and services. Mana Bazar is not the seller of products listed by Sellers unless clearly stated."
+    ]
+   },
+   {
+    "h": "2. Accounts",
+    "p": [
+     "You must be at least 18 years old, or use the Platform under a parent's or guardian's supervision. Give a correct name, mobile number and address. Keep your password secret; you are responsible for activity on your account. We may suspend or block accounts that break these Terms, give false information or misuse the Platform."
+    ]
+   },
+   {
+    "h": "3. Orders and prices",
+    "p": [
+     "Prices, availability and descriptions are set by Sellers. The amount payable is shown before you place the order and is calculated by our system, including any delivery fee and discount. An order is confirmed only when the Seller accepts it. Sellers may reject an order, for example if an item is out of stock. Where you allow substitutes, the Seller may offer a similar item; you may refuse it at delivery."
+    ]
+   },
+   {
+    "h": "4. Payments",
+    "p": [
+     "You can pay by Cash on Delivery or by UPI. UPI payments made through the QR code shown in the app go directly to the Seller's own UPI account. Online card / net-banking payments, when introduced, will be processed by our payment partner (Razorpay). We do not store your card or bank details."
+    ]
+   },
+   {
+    "h": "5. Delivery",
+    "p": [
+     "Delivery times shown are estimates. See the Shipping &amp; Delivery Policy for details."
+    ]
+   },
+   {
+    "h": "6. Cancellations and refunds",
+    "p": [
+     "See the Cancellation &amp; Refund Policy."
+    ]
+   },
+   {
+    "h": "7. Restricted items",
+    "p": [
+     "Medicines that need a prescription are supplied only by licensed medical shops and only against a valid prescription from a registered medical practitioner. Sellers must not list illegal, counterfeit, expired or unsafe items, alcohol, tobacco to minors, or anything prohibited by Indian law."
+    ]
+   },
+   {
+    "h": "8. Seller obligations",
+    "p": [
+     "Sellers must hold the licences their business needs (for example GST, FSSAI, drug licence, trade licence), keep prices and stock accurate, honour accepted orders, issue bills where required, and follow consumer protection law. Sellers pay Mana Bazar the commission shown in the app on delivered orders."
+    ]
+   },
+   {
+    "h": "9. Acceptable use",
+    "p": [
+     "Do not misuse the Platform: no fake orders, fraud, abuse of delivery partners or Sellers, attempts to hack or overload the service, or copying our content."
+    ]
+   },
+   {
+    "h": "10. Liability",
+    "p": [
+     "Sellers are responsible for the quality, safety and legality of the products they sell. To the extent allowed by law, Mana Bazar's liability for any order is limited to the amount paid for that order. Nothing in these Terms limits rights you have under the Consumer Protection Act, 2019 or other Indian law."
+    ]
+   },
+   {
+    "h": "11. Changes",
+    "p": [
+     "We may update these Terms. The latest version is always on the Platform, with the date it was updated."
+    ]
+   },
+   {
+    "h": "12. Law and disputes",
+    "p": [
+     "These Terms are governed by the laws of India. Courts at <b>Hyderabad, Telangana</b> have jurisdiction. Please first contact our Grievance Officer (see Contact us) so we can try to resolve the issue."
+    ]
+   }
+  ],
+  "slug": "terms"
+ },
+ {
+  "title": "Privacy Policy",
+  "intro": "This policy explains what personal data Mana Bazar collects, why, and your choices. We process personal data in line with the Digital Personal Data Protection Act, 2023 and other applicable Indian law.",
+  "sections": [
+   {
+    "h": "What we collect",
+    "p": [
+     "<b>Account details:</b> name, mobile number, password (stored only in encrypted/hashed form), delivery address. <b>Order details:</b> items, amounts, payment method and status, notes. <b>Location:</b> your device location, only if you allow it, to show nearby shops and estimate delivery time. <b>Seller details:</b> shop name, address, phone, UPI ID and KYC/licence details. <b>Delivery partner details:</b> vehicle and licence details and live location while on delivery. <b>Technical data:</b> basic logs needed to run and secure the service."
+    ]
+   },
+   {
+    "h": "Camera",
+    "p": [
+     "The app uses your camera only when you tap a scan button, to read a product barcode or a shop QR code. The camera picture is processed on your phone and is not uploaded or stored."
+    ]
+   },
+   {
+    "h": "Why we use it",
+    "p": [
+     "To create your account and log you in; to send your order to the Seller and delivery partner; to show order status; to handle payments, refunds and support; to prevent fraud and misuse; and to meet legal requirements. We do not sell your personal data."
+    ]
+   },
+   {
+    "h": "Who we share it with",
+    "p": [
+     "The Seller and delivery partner handling your order see your name, phone number, delivery address and order details. Our service providers process data for us: Supabase (database and login), Vercel (website hosting), and Razorpay (online payments, when introduced). If you tap \"Notify shop on WhatsApp\", the order message is sent through WhatsApp by you. We may share data with authorities when the law requires it."
+    ]
+   },
+   {
+    "h": "Where data is stored",
+    "p": [
+     "Data is stored on secure cloud servers of our providers, which may be located outside India (currently in Japan). Access is protected by passwords, encryption in transit and per-user access rules."
+    ]
+   },
+   {
+    "h": "How long we keep it",
+    "p": [
+     "We keep account data while your account is active, and order records for as long as required for tax and legal purposes. You can ask us to delete your account; we will delete or anonymise data that we are not required to keep."
+    ]
+   },
+   {
+    "h": "Your rights",
+    "p": [
+     "You can ask to access, correct or delete your personal data, withdraw consent (for example turn off location), and raise a grievance. Contact our Grievance Officer (see Contact us)."
+    ]
+   },
+   {
+    "h": "Children",
+    "p": [
+     "The Platform is not meant for children under 18 without a parent's or guardian's supervision."
+    ]
+   },
+   {
+    "h": "Deleting your account",
+    "p": [
+     "You can ask us to delete your Mana Bazar account and personal data at any time: in the app open <b>Profile → Delete my account</b>, or follow the steps at <b>/delete-account</b> on our website. We delete your account within 7 days and remove or anonymise your personal data, except order and tax records we must keep by law (usually up to 8 years)."
+    ]
+   }
+  ],
+  "slug": "privacy"
+ },
+ {
+  "title": "Cancellation & Refund Policy",
+  "intro": null,
+  "sections": [
+   {
+    "h": "Cancelling an order",
+    "p": [
+     "<b>By the customer:</b> you can cancel free of charge in the app while the order shows \"Order Placed\", i.e. before the shop accepts it. After the shop accepts, please call the shop; cancellation is at the shop's discretion because the items may already be packed or prepared (especially food). <b>By the shop:</b> a shop may reject an order, for example if items are unavailable. <b>By Mana Bazar:</b> we may cancel an order in case of suspected fraud or a technical problem."
+    ]
+   },
+   {
+    "h": "Refunds",
+    "p": [
+     "<b>Cash on Delivery:</b> nothing is charged before delivery, so no refund is needed for a cancelled order. <b>UPI paid directly to the shop:</b> if the order is cancelled or rejected, the shop refunds you to the same UPI account; Mana Bazar will help follow up if there is a delay. <b>Online payments (Razorpay, when introduced):</b> refunds go back to the original payment method, usually within 5–7 working days of approval, depending on your bank."
+    ]
+   },
+   {
+    "h": "Wrong, damaged or missing items",
+    "p": [
+     "Report the problem within 24 hours of delivery (for food and perishables, at the time of delivery) with a photo, by contacting the shop or our support. After checking, the shop will replace the item or refund its value. Opened, used or tampered items, and items damaged by misuse, are not covered unless defective."
+    ]
+   },
+   {
+    "h": "Services",
+    "p": [
+     "For services such as laundry or salon bookings, cancellation and refund terms set by the service provider apply, shown at the time of booking."
+    ]
+   }
+  ],
+  "slug": "refund"
+ },
+ {
+  "title": "Shipping & Delivery Policy",
+  "intro": null,
+  "sections": [
+   {
+    "h": "Where we deliver",
+    "p": [
+     "Mana Bazar currently serves selected areas in <b>Hyderabad and Guntur</b>. Each shop delivers within its own delivery radius."
+    ]
+   },
+   {
+    "h": "Delivery time",
+    "p": [
+     "The app shows an estimated delivery time based on the shop's preparation time and the distance to you. Times are estimates and can change because of traffic, weather, order volume or availability of items."
+    ]
+   },
+   {
+    "h": "Delivery charges",
+    "p": [
+     "A delivery fee is shown in the cart before you order (currently Rs 20, free for orders above Rs 499). Charges may change; the amount shown at checkout is what applies to your order."
+    ]
+   },
+   {
+    "h": "At delivery",
+    "p": [
+     "Please be available at the address given and keep your phone reachable. For Cash on Delivery, please pay the exact amount shown in the app. If we cannot reach you after reasonable attempts, the order may be cancelled."
+    ]
+   },
+   {
+    "h": "Pickup",
+    "p": [
+     "Some shops may allow you to collect the order from the shop; this will be shown when available."
+    ]
+   }
+  ],
+  "slug": "shipping"
+ }
+]
