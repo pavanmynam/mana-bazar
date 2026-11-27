@@ -1,5 +1,9 @@
 # Supabase setup — step by step (15 min)
 
+> ✅ **Done for the live project** (`mana -bazar`, ref `lnuptsingyembirjzjzr`, Tokyo):
+> schema, seed data and permissions were applied on 27 Nov 2026 through the
+> Supabase connector. Steps 1–2 below are only needed for a brand-new project.
+
 Supabase = Mana Bazar database + logins. Free plan tho start cheyyochu.
 
 ## Step 1 — Account & project
