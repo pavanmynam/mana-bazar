@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   useStore, CATEGORIES, addToCart, cartTotals, placeOrder, setOrderStatus, updateUser,
-  availablePromos, checkPromo, fetchShopReviews, fetchOrderReview, submitReview, changeMyPassword,
+  availablePromos, checkPromo, paymentsConfig, payOnline, fetchShopReviews, fetchOrderReview, submitReview, changeMyPassword,
   money, timeAgo, upiPayLink, upiQrImage, orderWhatsAppLink, distanceKm, etaWithDistance, slotLabel,
 } from '../store'
 import { StatusBadge, Tracker, BottomNav, useGeolocation } from './ui'
@@ -226,6 +226,8 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
   const [upiConfirmed, setUpiConfirmed] = useState(false)
   const [placing, setPlacing] = useState(false)
   const [promo, setPromo] = useState(null) // { code, discount, description }
+  const [online, setOnline] = useState(false)
+  useEffect(() => { paymentsConfig().then((c) => setOnline(!!c.enabled)) }, [])
   if (!cart) return <div className="empty big">🛒<p>Your cart is empty</p><small>Add items from any shop to get started</small></div>
 
   const shop = db.shops.find((s) => s.id === cart.shopId)
@@ -250,6 +252,10 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
       if (/promo/i.test(res.error)) setPromo(null)
       return alert(res.error)
     }
+    if (payment === 'RAZORPAY') {
+      const p = await payOnline(res.id)
+      if (p.error) alert(p.error)
+    }
     onPlaced(res.id)
   }
 
@@ -273,7 +279,7 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
         <label>Delivery Address<textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} /></label>
         <label>Note for shop (optional)<input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. less spicy, call before delivery" /></label>
         <div className="pay">
-          {[['COD', '💵 Cash on Delivery'], ['UPI', '📱 Pay by UPI']].map(([v, l]) => (
+          {[['COD', '💵 Cash on Delivery'], ...(online ? [['RAZORPAY', '💳 Pay online (UPI / Card / Netbanking)']] : []), ['UPI', '📱 Pay shop directly by UPI']].map(([v, l]) => (
             <label key={v} className={'radio' + (payment === v ? ' active' : '')}>
               <input type="radio" checked={payment === v} onChange={() => setPayment(v)} />{l}
             </label>
@@ -292,7 +298,7 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
         <div className="total"><span>To Pay</span><span>{money(t.total)}</span></div>
       </div>
       <button className="btn primary block lg" disabled={!upiReady || placing} onClick={order}>
-        {placing ? 'Placing order…' : payment === 'UPI' && !upiConfirmed ? 'Confirm payment above first' : `Place Order · ${money(t.total)}`}
+        {placing ? 'Placing order…' : payment === 'UPI' && !upiConfirmed ? 'Confirm payment above first' : payment === 'RAZORPAY' ? `Place Order & Pay · ${money(t.total)}` : `Place Order · ${money(t.total)}`}
       </button>
     </>
   )
@@ -404,6 +410,7 @@ function TrackOrder({ db, id, back }) {
         <div className="row"><h2>Order #{o.code}</h2><StatusBadge s={o.status} /></div>
         <p className="muted">{shop?.icon} {shop?.name} · 📞 {shop?.phone}</p>
         {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mana Bazar.</div>}
+        <OnlinePaymentStatus o={o} />
         <Tracker o={o} />
         <small className="muted">Live updates: when the shop owner changes status, it shows here.</small>
         {o.status === 'placed' && (
@@ -440,6 +447,28 @@ function Stars({ value, onPick, size = 26 }) {
           className={n <= value ? 'on' : ''}>★</button>
       ))}
     </span>
+  )
+}
+
+function OnlinePaymentStatus({ o }) {
+  const [busy, setBusy] = useState(false)
+  if (o.payment !== 'RAZORPAY') return null
+  const closed = ['cancelled', 'rejected'].includes(o.status)
+  if (o.paymentStatus === 'paid') {
+    return <div className="success">✅ Paid online{closed ? ' — refund will reach your account in 5–7 working days.' : ''}</div>
+  }
+  if (closed) return null
+  async function pay() {
+    setBusy(true)
+    const r = await payOnline(o.id)
+    setBusy(false)
+    if (r.error) alert(r.error)
+  }
+  return (
+    <div className="warn">
+      ⏳ Payment pending — the shop starts packing after you pay.
+      <button className="btn primary block" style={{ marginTop: 8 }} disabled={busy} onClick={pay}>{busy ? 'Opening…' : `Pay now · ${money(o.total)}`}</button>
+    </div>
   )
 }
 

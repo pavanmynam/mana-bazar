@@ -333,6 +333,66 @@ export function cartTotals(cart, settings) {
   return { itemTotal, deliveryFee, total: itemTotal + deliveryFee }
 }
 
+// ---------- online payments (Razorpay) ----------
+// The server functions live in /api on Vercel. Inside the Android app the
+// page runs on https://localhost, so calls go to the public website.
+const apiBase = () => (window.location.hostname === 'localhost' && !window.location.port ? 'https://mana-bazar-rho.vercel.app' : '')
+
+export async function paymentsConfig() {
+  try {
+    const r = await fetch(`${apiBase()}/api/razorpay-config`)
+    return r.ok ? await r.json() : { enabled: false }
+  } catch { return { enabled: false } }
+}
+
+let checkoutScript = null
+function loadCheckout() {
+  if (window.Razorpay) return Promise.resolve()
+  checkoutScript ||= new Promise((resolve, reject) => {
+    const el = document.createElement('script')
+    el.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    el.onload = resolve
+    el.onerror = () => { checkoutScript = null; reject(new Error('Could not load Razorpay')) }
+    document.head.appendChild(el)
+  })
+  return checkoutScript
+}
+
+// Opens Razorpay checkout for an unpaid order.
+// Resolves { ok } | { cancelled } | { error }.
+export async function payOnline(orderId) {
+  try {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    const r = await fetch(`${apiBase()}/api/razorpay-order`, {
+      method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ orderId }),
+    })
+    const o = await r.json()
+    if (!r.ok) return { error: o.error || 'Could not start payment' }
+    await loadCheckout()
+    return await new Promise((resolve) => {
+      const rz = new window.Razorpay({
+        key: o.keyId, order_id: o.razorpayOrderId, amount: o.amount, currency: 'INR',
+        name: 'Mana Bazar', description: `Order #${o.code}`,
+        prefill: { name: o.name, contact: o.phone }, theme: { color: '#ff5722' },
+        handler: async (resp) => {
+          const v = await fetch(`${apiBase()}/api/razorpay-verify`, {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ orderId, ...resp }),
+          })
+          const j = await v.json().catch(() => ({}))
+          await refresh()
+          resolve(v.ok ? { ok: true } : { error: j.error || 'Payment received but not confirmed yet. It will update in a minute.' })
+        },
+        modal: { ondismiss: () => resolve({ cancelled: true }) },
+      })
+      rz.open()
+    })
+  } catch (e) {
+    return { error: fail(e, 'Could not start payment') }
+  }
+}
+
 // ---------- promo codes ----------
 // Preview only — place_order on the server checks the code again and
 // calculates the real discount.

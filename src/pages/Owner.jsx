@@ -102,11 +102,13 @@ function Orders({ db, orders }) {
       {list.map((o) => {
         const cust = db.users.find((u) => u.id === o.customerId)
         const i = ORDER_STEPS.indexOf(o.status)
-        const next = ORDER_STEPS[i + 1]
+        const awaitingPay = o.payment === 'RAZORPAY' && o.paymentStatus !== 'paid'
+        const next = awaitingPay ? null : ORDER_STEPS[i + 1]
         return (
           <div key={o.id} className={'card order-card' + (o.status === 'placed' ? ' new' : '')}>
             <div className="row"><b>#{o.code}</b><StatusBadge s={o.status} /></div>
-            <small className="muted">{timeAgo(o.createdAt)} · {o.payment}</small>
+            <small className="muted">{timeAgo(o.createdAt)} · {o.payment === 'RAZORPAY' ? 'ONLINE' : o.payment}
+              {o.payment === 'RAZORPAY' && (o.paymentStatus === 'paid' ? ' · ✅ Paid' : ' · ⏳ Waiting for customer payment')}</small>
             <ul className="items">{o.items.map((it) => <li key={it.productId}>{it.emoji} {it.name} × <b>{it.qty}</b> <span>{money(it.price * it.qty)}</span></li>)}</ul>
             <div className="row"><span>👤 {cust?.name} · 📞 {cust?.phone}</span><b>{money(o.total)}</b></div>
             <small className="muted">📍 {o.address}</small>
