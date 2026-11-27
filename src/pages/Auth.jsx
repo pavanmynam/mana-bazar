@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CATEGORIES, login, registerCustomer, registerOwner, createFirstAdmin, resetDemo, useStore } from '../store'
+import { CATEGORIES, login, registerCustomer, registerOwner, createFirstAdmin, useStore } from '../store'
 
 const ROLES = [
   { id: 'customer', label: 'Customer', icon: '🧑' },
@@ -8,8 +8,8 @@ const ROLES = [
 ]
 
 export default function Auth() {
-  const { db } = useStore()
-  const adminExists = db.users.some((u) => u.role === 'admin')
+  const { adminExists } = useStore()
+  const [busy, setBusy] = useState(false)
   const [role, setRole] = useState('customer')
   const [mode, setMode] = useState('login')
   const [f, setF] = useState({ phone: '', password: '', name: '', address: '', shopName: '', category: 'grocery' })
@@ -18,16 +18,23 @@ export default function Auth() {
   const r = ROLES.find((x) => x.id === role)
   const adminSetup = role === 'admin' && !adminExists
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault()
+    if (busy) return
     setErr('')
+    setBusy(true)
     let msg
-    if (adminSetup) msg = createFirstAdmin({ username: f.phone, password: f.password })
-    else if (mode === 'login') msg = login(f.phone, f.password, role)
-    else if (!f.name || !f.phone || !f.password) msg = 'Please fill all fields'
-    else if (role === 'customer') msg = registerCustomer(f)
-    else if (!f.shopName || !f.address) msg = 'Please fill shop name and address'
-    else msg = registerOwner(f)
+    try {
+      if (adminSetup) msg = await createFirstAdmin({ username: f.phone, password: f.password })
+      else if (mode === 'login') msg = await login(f.phone, f.password, role)
+      else if (!f.name || !f.phone || !f.password) msg = 'Please fill all fields'
+      else if (role === 'customer') msg = await registerCustomer(f)
+      else if (!f.shopName || !f.address) msg = 'Please fill shop name and address'
+      else msg = await registerOwner(f)
+    } catch (ex) {
+      msg = ex?.message || 'Network problem, please try again'
+    }
+    setBusy(false)
     if (msg) setErr(msg)
   }
 
@@ -67,7 +74,7 @@ export default function Auth() {
         <label>{role === 'admin' ? 'Username' : 'Mobile Number'}
           <input value={f.phone} onChange={set('phone')} placeholder={role === 'admin' ? 'choose a username' : '10-digit mobile'} inputMode={role === 'admin' ? 'text' : 'numeric'} />
         </label>
-        <label>Password<input type="password" value={f.password} onChange={set('password')} placeholder={adminSetup ? 'choose a password' : 'Password'} /></label>
+        <label>Password<input type="password" value={f.password} onChange={set('password')} placeholder={adminSetup || mode === 'register' ? 'min 6 characters' : 'Password'} /></label>
 
         {mode === 'register' && role === 'owner' && (
           <>
@@ -86,8 +93,8 @@ export default function Auth() {
         )}
 
         {err && <div className="error">{err}</div>}
-        <button className="btn primary block">
-          {adminSetup ? 'Create Admin Account' : mode === 'login' ? 'Login' : 'Register'}
+        <button className="btn primary block" disabled={busy}>
+          {busy ? 'Please wait…' : adminSetup ? 'Create Admin Account' : mode === 'login' ? 'Login' : 'Register'}
         </button>
 
         {role !== 'admin' && (
@@ -99,9 +106,6 @@ export default function Auth() {
           </p>
         )}
       </form>
-      <button className="reset-link" onClick={() => confirm('This clears all real shops, orders and accounts and brings back only the sample catalog. Continue?') && resetDemo()}>
-        Reset to sample catalog
-      </button>
     </div>
   )
 }

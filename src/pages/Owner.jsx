@@ -53,7 +53,6 @@ export default function Owner({ user }) {
           {shop.status === 'pending'
             ? <p>Your shop is waiting for <b>Admin approval</b>. Once approved, customers can see your shop and place orders.</p>
             : <p>Your shop has been <b>blocked</b> by Admin. Please contact Mana Bazar support.</p>}
-          <small className="muted">Tip (demo): login as Admin → Shops → Approve.</small>
         </div>
       </main>
     )
@@ -102,7 +101,7 @@ function Orders({ db, orders }) {
         const next = ORDER_STEPS[i + 1]
         return (
           <div key={o.id} className={'card order-card' + (o.status === 'placed' ? ' new' : '')}>
-            <div className="row"><b>#{o.id}</b><StatusBadge s={o.status} /></div>
+            <div className="row"><b>#{o.code}</b><StatusBadge s={o.status} /></div>
             <small className="muted">{timeAgo(o.createdAt)} · {o.payment}</small>
             <ul className="items">{o.items.map((it) => <li key={it.productId}>{it.emoji} {it.name} × <b>{it.qty}</b> <span>{money(it.price * it.qty)}</span></li>)}</ul>
             <div className="row"><span>👤 {cust?.name} · 📞 {cust?.phone}</span><b>{money(o.total)}</b></div>
