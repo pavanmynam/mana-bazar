@@ -632,10 +632,17 @@ drop policy if exists settings_admin on public.settings;
 create policy settings_admin on public.settings for update using (public.is_admin());
 
 -- shops: everyone sees approved shops; owner sees own; admin sees all
+-- (helper so visitors who can't read orders can still list shops)
+create or replace function public.rider_has_order_from(sid uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select auth.uid() is not null and exists (
+    select 1 from public.orders o where o.shop_id = sid and o.delivery_partner_id = auth.uid())
+$$;
+
 drop policy if exists shops_read on public.shops;
 create policy shops_read on public.shops for select using (
   status = 'approved' or owner_id = auth.uid() or public.is_admin()
-  or exists (select 1 from public.orders o where o.shop_id = shops.id and o.delivery_partner_id = auth.uid()));
+  or public.rider_has_order_from(id));
 drop policy if exists shops_insert on public.shops;
 create policy shops_insert on public.shops for insert
   with check (public.my_role() in ('owner','admin'));
@@ -781,3 +788,41 @@ begin
     end if;
   end loop;
 end $$;
+
+-- ---------------------------------------------------------------------
+-- 16. API PERMISSIONS (which roles may touch which tables / functions)
+-- ---------------------------------------------------------------------
+-- Remove broad default privileges that bypass row level security.
+revoke truncate, trigger, references on all tables in schema public from anon, authenticated;
+
+-- Visitors (not logged in) can only READ public catalog data.
+grant select on public.categories, public.shops, public.products, public.settings,
+  public.promo_codes, public.banners, public.reviews to anon;
+
+-- Logged-in users: row level security policies decide which rows.
+grant select, insert, update, delete on public.profiles, public.categories, public.shops,
+  public.products, public.delivery_partners, public.settings, public.promo_codes,
+  public.banners, public.orders, public.reviews, public.messages, public.support_tickets
+  to authenticated;
+grant usage, select on sequence public.order_seq to authenticated;
+
+-- Server (payment webhook) uses service_role.
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;
+
+-- Trigger functions: never callable through the API (triggers still fire).
+revoke execute on function public.handle_new_user(), public.protect_profile_fields(),
+  public.protect_shop_fields(), public.new_shop_defaults(), public.protect_partner_fields(),
+  public.guard_order_update(), public.new_order_defaults(), public.refresh_shop_rating()
+  from public, anon, authenticated;
+
+-- App actions: logged-in users only (each checks permissions inside).
+revoke execute on function public.place_order(uuid, jsonb, text, double precision, double precision, text, text, text, boolean),
+  public.claim_first_admin(), public.admin_report(timestamptz, timestamptz)
+  from public, anon;
+grant execute on function public.place_order(uuid, jsonb, text, double precision, double precision, text, text, text, boolean),
+  public.claim_first_admin(), public.admin_report(timestamptz, timestamptz)
+  to authenticated;
+
+-- Internal helper: only used by other functions, not by the API.
+revoke execute on function public.is_trusted() from public, anon, authenticated;
