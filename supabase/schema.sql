@@ -840,3 +840,24 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke execute on function public.admin_exists() from public;
 grant execute on function public.admin_exists() to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- 17. PASSWORD RESET BY ADMIN
+-- ---------------------------------------------------------------------
+-- Admin resets a customer / shop owner / delivery partner password
+-- (there is no SMS or email login, so "forgot password" goes through support).
+create or replace function public.admin_set_password(p_user_id uuid, p_password text)
+returns void language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if not public.is_admin() then raise exception 'Only admin can reset passwords'; end if;
+  if p_password is null or length(p_password) < 6 then raise exception 'Password must be at least 6 characters'; end if;
+  if exists (select 1 from public.profiles where id = p_user_id and role = 'admin') then
+    raise exception 'Admin passwords cannot be reset here';
+  end if;
+  update auth.users
+     set encrypted_password = extensions.crypt(p_password, extensions.gen_salt('bf')), updated_at = now()
+   where id = p_user_id;
+  if not found then raise exception 'User not found'; end if;
+end $$;
+revoke all on function public.admin_set_password(uuid, text) from public, anon;
+grant execute on function public.admin_set_password(uuid, text) to authenticated;

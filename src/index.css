@@ -251,3 +251,18 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: t
 .legal-table th { width: 34%; color: #555; }
 .legal-links { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; margin: 22px 0 8px; font-size: 12px; }
 .legal-links a { color: #777; }
+
+/* ---------- promo & reviews ---------- */
+.promo-row { display: flex; gap: 8px; margin-top: 8px; }
+.promo-row input { flex: 1; margin: 0; text-transform: uppercase; }
+.promo.applied { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #e8f5e9; }
+.offers { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.offer { display: flex; flex-direction: column; align-items: flex-start; border: 1px dashed var(--brand); background: var(--brand-l); border-radius: 10px; padding: 6px 10px; cursor: pointer; text-align: left; }
+.offer b { color: var(--brand-d); }
+.bill .discount span:last-child { color: #2e7d32; font-weight: 600; }
+.error-text { color: #c62828; display: block; margin-top: 6px; }
+.stars { display: inline-flex; gap: 2px; }
+.stars button { background: none; border: 0; padding: 0 1px; color: #d0d4d8; font-size: inherit; line-height: 1; cursor: pointer; }
+.stars button:disabled { cursor: default; }
+.stars button.on { color: #ffb300; }
+.review p { margin: 6px 0 0; }

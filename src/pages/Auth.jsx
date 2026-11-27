@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { CATEGORIES, login, registerCustomer, registerOwner, createFirstAdmin, useStore } from '../store'
-import { LegalLinks } from './Legal'
+import { LegalLinks, BUSINESS } from './Legal'
 
 const ROLES = [
   { id: 'customer', label: 'Customer', icon: '🧑' },
@@ -98,6 +98,13 @@ export default function Auth() {
           {busy ? 'Please wait…' : adminSetup ? 'Create Admin Account' : mode === 'login' ? 'Login' : 'Register'}
         </button>
 
+        {mode === 'login' && role !== 'admin' && (
+          <p className="switch" style={{ marginTop: 4 }}>
+            <a href={`https://wa.me/${BUSINESS.phoneRaw}?text=${encodeURIComponent(`Hi Mana Bazar, I forgot my password. Please reset it.\nAccount type: ${role === 'owner' ? 'Shop owner' : role === 'delivery' ? 'Delivery partner' : 'Customer'}\nRegistered mobile: ${f.phone || ''}`)}`}
+              target="_blank" rel="noreferrer">Forgot password?</a>
+            <small className="muted" style={{ display: 'block' }}>We'll reset it on WhatsApp and send you a new password.</small>
+          </p>
+        )}
         {role !== 'admin' && (
           <p className="switch">
             {mode === 'login' ? 'New here? ' : 'Already registered? '}

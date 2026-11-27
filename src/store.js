@@ -333,6 +333,60 @@ export function cartTotals(cart, settings) {
   return { itemTotal, deliveryFee, total: itemTotal + deliveryFee }
 }
 
+// ---------- promo codes ----------
+// Preview only — place_order on the server checks the code again and
+// calculates the real discount.
+export async function availablePromos(shopId) {
+  const { data, error } = await supabase.from('promo_codes').select('*').eq('active', true)
+  if (error) { console.error(error); return [] }
+  const now = Date.now()
+  return (data || []).filter((p) => (!p.expires_at || Date.parse(p.expires_at) > now) && (!p.shop_id || p.shop_id === shopId))
+}
+export async function checkPromo(code, shopId, itemTotal) {
+  const c = String(code || '').trim().toUpperCase()
+  if (!c) return { error: 'Enter a promo code' }
+  const promos = await availablePromos(shopId)
+  const p = promos.find((x) => x.code === c)
+  if (!p) return { error: 'Invalid or expired promo code' }
+  const min = num(p.min_order)
+  if (itemTotal < min) return { error: `Add items worth ${money(min - itemTotal)} more to use ${c} (minimum ${money(min)})` }
+  let d = p.discount_type === 'flat' ? num(p.value) : Math.round((itemTotal * num(p.value)) / 100)
+  if (p.max_discount != null) d = Math.min(d, num(p.max_discount))
+  d = Math.min(d, itemTotal)
+  return { code: c, discount: d, description: p.description }
+}
+
+// ---------- reviews ----------
+export async function fetchShopReviews(shopId) {
+  const { data, error } = await supabase.from('reviews').select('id, rating, comment, created_at')
+    .eq('shop_id', shopId).order('created_at', { ascending: false }).limit(20)
+  if (error) { console.error(error); return [] }
+  return data || []
+}
+export async function fetchOrderReview(orderId) {
+  const { data } = await supabase.from('reviews').select('id, rating, comment').eq('order_id', orderId).maybeSingle()
+  return data || null
+}
+export async function submitReview({ orderId, shopId, rating, comment }) {
+  const { error } = await supabase.from('reviews').insert({
+    order_id: orderId, shop_id: shopId, customer_id: session.userId, rating, comment: comment?.trim() || null,
+  })
+  if (error) return { error: error.code === '23505' ? 'You have already reviewed this order.' : fail(error) }
+  await refresh()
+  return { ok: true }
+}
+
+// ---------- passwords ----------
+export async function changeMyPassword(newPassword) {
+  if (!newPassword || newPassword.length < 6) return { error: 'Password must be at least 6 characters' }
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  return error ? { error: fail(error) } : { ok: true }
+}
+export async function adminSetPassword(userId, newPassword) {
+  const { error } = await supabase.rpc('admin_set_password', { p_user_id: userId, p_password: newPassword })
+  return error ? { error: fail(error) } : { ok: true }
+}
+
 // ---------- orders ----------
 // The server re-calculates prices, delivery fee and discount, so nobody
 // can change the amount from the browser. Returns { id } or { error }.

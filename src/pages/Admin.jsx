@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useStore, CATEGORIES, updateShop, updateUser, updateSettings, setOrderStatus, money, timeAgo, STATUS_LABEL } from '../store'
+import { useStore, CATEGORIES, updateShop, updateUser, updateSettings, setOrderStatus, money, timeAgo, STATUS_LABEL, adminSetPassword } from '../store'
 import { StatusBadge, BottomNav, Stat } from './ui'
 
 export default function Admin() {
@@ -132,6 +132,17 @@ function AllOrders({ db }) {
   )
 }
 
+// "Forgot password": the user contacts support, admin sets a temporary password
+// here and tells it to them; they can change it later in Profile.
+async function resetPassword(u) {
+  const temp = String(Math.floor(100000 + Math.random() * 900000))
+  const pw = prompt(`New password for ${u.name} (${u.phone}).\nAt least 6 characters. Tell this to the user on call/WhatsApp:`, temp)
+  if (pw == null) return
+  const r = await adminSetPassword(u.id, pw.trim())
+  if (r.error) return alert(r.error)
+  alert(`Done ✓\n${u.name} can now login with:\nMobile: ${u.phone}\nPassword: ${pw.trim()}\n\nAsk them to change it in Profile → Change password.`)
+}
+
 function Users({ db }) {
   const [role, setRole] = useState('customer')
   const list = db.users.filter((u) => u.role === role)
@@ -154,9 +165,12 @@ function Users({ db }) {
                 <td>{role === 'owner' ? db.shops.find((s) => s.id === u.shopId)?.name : db.orders.filter((o) => o.customerId === u.id).length}</td>
                 <td><span className={'badge ' + (u.active ? 'sh-approved' : 'sh-blocked')}>{u.active ? 'active' : 'blocked'}</span></td>
                 <td>{u.role !== 'admin' && (
-                  <button className={'btn sm ' + (u.active ? 'danger' : 'primary')} onClick={() => updateUser(u.id, { active: !u.active })}>
-                    {u.active ? 'Block' : 'Unblock'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button className={'btn sm ' + (u.active ? 'danger' : 'primary')} onClick={() => updateUser(u.id, { active: !u.active })}>
+                      {u.active ? 'Block' : 'Unblock'}
+                    </button>
+                    <button className="btn sm" onClick={() => resetPassword(u)}>🔑 Reset password</button>
+                  </div>
                 )}</td>
               </tr>
             ))}
