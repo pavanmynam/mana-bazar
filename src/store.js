@@ -333,6 +333,120 @@ export function cartTotals(cart, settings) {
   return { itemTotal, deliveryFee, total: itemTotal + deliveryFee }
 }
 
+// ---------- online payments (Razorpay) ----------
+// The server functions live in /api on Vercel. Inside the Android app the
+// page runs on https://localhost, so calls go to the public website.
+const apiBase = () => (window.location.hostname === 'localhost' && !window.location.port ? 'https://mana-bazar-rho.vercel.app' : '')
+
+export async function paymentsConfig() {
+  try {
+    const r = await fetch(`${apiBase()}/api/razorpay-config`)
+    return r.ok ? await r.json() : { enabled: false }
+  } catch { return { enabled: false } }
+}
+
+let checkoutScript = null
+function loadCheckout() {
+  if (window.Razorpay) return Promise.resolve()
+  checkoutScript ||= new Promise((resolve, reject) => {
+    const el = document.createElement('script')
+    el.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    el.onload = resolve
+    el.onerror = () => { checkoutScript = null; reject(new Error('Could not load Razorpay')) }
+    document.head.appendChild(el)
+  })
+  return checkoutScript
+}
+
+// Opens Razorpay checkout for an unpaid order.
+// Resolves { ok } | { cancelled } | { error }.
+export async function payOnline(orderId) {
+  try {
+    const { data } = await supabase.auth.getSession()
+    const token = data.session?.access_token
+    const r = await fetch(`${apiBase()}/api/razorpay-order`, {
+      method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ orderId }),
+    })
+    const o = await r.json()
+    if (!r.ok) return { error: o.error || 'Could not start payment' }
+    await loadCheckout()
+    return await new Promise((resolve) => {
+      const rz = new window.Razorpay({
+        key: o.keyId, order_id: o.razorpayOrderId, amount: o.amount, currency: 'INR',
+        name: 'Mana Bazar', description: `Order #${o.code}`,
+        prefill: { name: o.name, contact: o.phone }, theme: { color: '#ff5722' },
+        handler: async (resp) => {
+          const v = await fetch(`${apiBase()}/api/razorpay-verify`, {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ orderId, ...resp }),
+          })
+          const j = await v.json().catch(() => ({}))
+          await refresh()
+          resolve(v.ok ? { ok: true } : { error: j.error || 'Payment received but not confirmed yet. It will update in a minute.' })
+        },
+        modal: { ondismiss: () => resolve({ cancelled: true }) },
+      })
+      rz.open()
+    })
+  } catch (e) {
+    return { error: fail(e, 'Could not start payment') }
+  }
+}
+
+// ---------- promo codes ----------
+// Preview only — place_order on the server checks the code again and
+// calculates the real discount.
+export async function availablePromos(shopId) {
+  const { data, error } = await supabase.from('promo_codes').select('*').eq('active', true)
+  if (error) { console.error(error); return [] }
+  const now = Date.now()
+  return (data || []).filter((p) => (!p.expires_at || Date.parse(p.expires_at) > now) && (!p.shop_id || p.shop_id === shopId))
+}
+export async function checkPromo(code, shopId, itemTotal) {
+  const c = String(code || '').trim().toUpperCase()
+  if (!c) return { error: 'Enter a promo code' }
+  const promos = await availablePromos(shopId)
+  const p = promos.find((x) => x.code === c)
+  if (!p) return { error: 'Invalid or expired promo code' }
+  const min = num(p.min_order)
+  if (itemTotal < min) return { error: `Add items worth ${money(min - itemTotal)} more to use ${c} (minimum ${money(min)})` }
+  let d = p.discount_type === 'flat' ? num(p.value) : Math.round((itemTotal * num(p.value)) / 100)
+  if (p.max_discount != null) d = Math.min(d, num(p.max_discount))
+  d = Math.min(d, itemTotal)
+  return { code: c, discount: d, description: p.description }
+}
+
+// ---------- reviews ----------
+export async function fetchShopReviews(shopId) {
+  const { data, error } = await supabase.from('reviews').select('id, rating, comment, created_at')
+    .eq('shop_id', shopId).order('created_at', { ascending: false }).limit(20)
+  if (error) { console.error(error); return [] }
+  return data || []
+}
+export async function fetchOrderReview(orderId) {
+  const { data } = await supabase.from('reviews').select('id, rating, comment').eq('order_id', orderId).maybeSingle()
+  return data || null
+}
+export async function submitReview({ orderId, shopId, rating, comment }) {
+  const { error } = await supabase.from('reviews').insert({
+    order_id: orderId, shop_id: shopId, customer_id: session.userId, rating, comment: comment?.trim() || null,
+  })
+  if (error) return { error: error.code === '23505' ? 'You have already reviewed this order.' : fail(error) }
+  await refresh()
+  return { ok: true }
+}
+
+// ---------- passwords ----------
+export async function changeMyPassword(newPassword) {
+  if (!newPassword || newPassword.length < 6) return { error: 'Password must be at least 6 characters' }
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  return error ? { error: fail(error) } : { ok: true }
+}
+export async function adminSetPassword(userId, newPassword) {
+  const { error } = await supabase.rpc('admin_set_password', { p_user_id: userId, p_password: newPassword })
+  return error ? { error: fail(error) } : { ok: true }
+}
+
 // ---------- orders ----------
 // The server re-calculates prices, delivery fee and discount, so nobody
 // can change the amount from the browser. Returns { id } or { error }.

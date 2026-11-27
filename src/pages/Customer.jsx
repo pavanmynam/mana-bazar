@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   useStore, CATEGORIES, addToCart, cartTotals, placeOrder, setOrderStatus, updateUser,
+  availablePromos, checkPromo, paymentsConfig, payOnline, fetchShopReviews, fetchOrderReview, submitReview, changeMyPassword,
   money, timeAgo, upiPayLink, upiQrImage, orderWhatsAppLink, distanceKm, etaWithDistance, slotLabel,
 } from '../store'
 import { StatusBadge, Tracker, BottomNav, useGeolocation } from './ui'
@@ -177,7 +178,7 @@ function ShopPage({ db, cart, shopId, back }) {
           <h2>{shop.name}</h2>
           <p>{c?.name} · {shop.address}</p>
           <div className="meta">
-            <span className="rating">★ {shop.rating}</span>
+            <span className="rating">★ {shop.rating}{shop.ratingCount ? ` (${shop.ratingCount})` : ''}</span>
             <span>🕒 {shop.eta}-{shop.eta + 10} min</span>
             <span>📞 {shop.phone}</span>
           </div>
@@ -212,6 +213,7 @@ function ShopPage({ db, cart, shopId, back }) {
           )
         })}
       </div>
+      <ShopReviews shopId={shopId} count={shop.ratingCount} />
       {cart?.shopId === shopId && <div style={{ height: 60 }} />}
     </>
   )
@@ -223,11 +225,17 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
   const [note, setNote] = useState('')
   const [upiConfirmed, setUpiConfirmed] = useState(false)
   const [placing, setPlacing] = useState(false)
+  const [promo, setPromo] = useState(null) // { code, discount, description }
+  const [online, setOnline] = useState(false)
+  useEffect(() => { paymentsConfig().then((c) => setOnline(!!c.enabled)) }, [])
   if (!cart) return <div className="empty big">🛒<p>Your cart is empty</p><small>Add items from any shop to get started</small></div>
 
   const shop = db.shops.find((s) => s.id === cart.shopId)
   if (!shop) return <div className="empty big">🛒<p>This shop is no longer available</p><button className="btn" onClick={() => addToCart({ shopId: null }, 0)}>Clear cart</button></div>
-  const t = cartTotals(cart, db.settings)
+  const base = cartTotals(cart, db.settings)
+  // Drop the preview if the cart no longer meets the code's rules; the server re-checks anyway.
+  const discount = promo ? Math.min(promo.discount, base.itemTotal) : 0
+  const t = { ...base, discount, total: base.total - discount }
   const products = db.products
   const upiReady = payment !== 'UPI' || upiConfirmed
 
@@ -238,9 +246,16 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
     if (payment === 'UPI' && !upiConfirmed) return alert("Please confirm you've completed the UPI payment first")
     setPlacing(true)
     if (!user.address) updateUser(user.id, { address })
-    const res = await placeOrder({ address, payment, note })
+    const res = await placeOrder({ address, payment, note, promoCode: promo?.code })
     setPlacing(false)
-    if (res.error) return alert(res.error)
+    if (res.error) {
+      if (/promo/i.test(res.error)) setPromo(null)
+      return alert(res.error)
+    }
+    if (payment === 'RAZORPAY') {
+      const p = await payOnline(res.id)
+      if (p.error) alert(p.error)
+    }
     onPlaced(res.id)
   }
 
@@ -264,7 +279,7 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
         <label>Delivery Address<textarea rows={2} value={address} onChange={(e) => setAddress(e.target.value)} /></label>
         <label>Note for shop (optional)<input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. less spicy, call before delivery" /></label>
         <div className="pay">
-          {[['COD', '💵 Cash on Delivery'], ['UPI', '📱 Pay by UPI']].map(([v, l]) => (
+          {[['COD', '💵 Cash on Delivery'], ...(online ? [['RAZORPAY', '💳 Pay online (UPI / Card / Netbanking)']] : []), ['UPI', '📱 Pay shop directly by UPI']].map(([v, l]) => (
             <label key={v} className={'radio' + (payment === v ? ' active' : '')}>
               <input type="radio" checked={payment === v} onChange={() => setPayment(v)} />{l}
             </label>
@@ -274,16 +289,69 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
           <UpiCheckout shop={shop} amount={t.total} confirmed={upiConfirmed} setConfirmed={setUpiConfirmed} />
         )}
       </div>
+      <PromoBox shopId={shop.id} itemTotal={base.itemTotal} promo={promo} setPromo={setPromo} />
       <div className="card bill">
         <div><span>Item total</span><span>{money(t.itemTotal)}</span></div>
         <div><span>Delivery fee</span><span>{t.deliveryFee ? money(t.deliveryFee) : <i className="free">FREE</i>}</span></div>
+        {t.discount > 0 && <div className="discount"><span>Promo {promo.code}</span><span>− {money(t.discount)}</span></div>}
         {t.deliveryFee > 0 && <small>Add {money(db.settings.freeDeliveryAbove - t.itemTotal)} more for free delivery</small>}
         <div className="total"><span>To Pay</span><span>{money(t.total)}</span></div>
       </div>
       <button className="btn primary block lg" disabled={!upiReady || placing} onClick={order}>
-        {placing ? 'Placing order…' : payment === 'UPI' && !upiConfirmed ? 'Confirm payment above first' : `Place Order · ${money(t.total)}`}
+        {placing ? 'Placing order…' : payment === 'UPI' && !upiConfirmed ? 'Confirm payment above first' : payment === 'RAZORPAY' ? `Place Order & Pay · ${money(t.total)}` : `Place Order · ${money(t.total)}`}
       </button>
     </>
+  )
+}
+
+function PromoBox({ shopId, itemTotal, promo, setPromo }) {
+  const [code, setCode] = useState('')
+  const [offers, setOffers] = useState([])
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { availablePromos(shopId).then(setOffers) }, [shopId])
+  // Re-check when the cart total changes (e.g. items removed below the minimum).
+  useEffect(() => {
+    if (!promo) return
+    checkPromo(promo.code, shopId, itemTotal).then((r) => {
+      if (r.error) { setPromo(null); setMsg(r.error) } else if (r.discount !== promo.discount) setPromo(r)
+    })
+  }, [itemTotal]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function apply(c) {
+    setBusy(true); setMsg('')
+    const r = await checkPromo(c, shopId, itemTotal)
+    setBusy(false)
+    if (r.error) { setMsg(r.error); return }
+    setPromo(r); setCode('')
+  }
+
+  if (promo) {
+    return (
+      <div className="card promo applied">
+        <span>🎉 <b>{promo.code}</b> applied — you save <b>{money(promo.discount)}</b></span>
+        <button className="btn ghost sm" onClick={() => { setPromo(null); setMsg('') }}>Remove</button>
+      </div>
+    )
+  }
+  return (
+    <div className="card promo">
+      <b>🏷️ Promo code</b>
+      <form className="promo-row" onSubmit={(e) => { e.preventDefault(); apply(code) }}>
+        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="Enter code e.g. WELCOME50" />
+        <button className="btn sm" disabled={busy || !code.trim()}>{busy ? '…' : 'Apply'}</button>
+      </form>
+      {msg && <small className="error-text">{msg}</small>}
+      {offers.length > 0 && (
+        <div className="offers">
+          {offers.map((o) => (
+            <button key={o.code} type="button" className="offer" onClick={() => apply(o.code)}>
+              <b>{o.code}</b><small>{o.description || (o.discount_type === 'flat' ? `${money(o.value)} off` : `${Number(o.value)}% off`)}{Number(o.min_order) > 0 ? ` · min ${money(o.min_order)}` : ''}</small>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -342,6 +410,7 @@ function TrackOrder({ db, id, back }) {
         <div className="row"><h2>Order #{o.code}</h2><StatusBadge s={o.status} /></div>
         <p className="muted">{shop?.icon} {shop?.name} · 📞 {shop?.phone}</p>
         {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mana Bazar.</div>}
+        <OnlinePaymentStatus o={o} />
         <Tracker o={o} />
         <small className="muted">Live updates: when the shop owner changes status, it shows here.</small>
         {o.status === 'placed' && (
@@ -361,12 +430,127 @@ function TrackOrder({ db, id, back }) {
         <p className="muted">📍 {o.address}</p>
         {o.note && <p className="muted">📝 {o.note}</p>}
       </div>
+      {o.status === 'delivered' && <ReviewBox order={o} shop={shop} />}
       {o.status === 'placed' && (
         <button className="btn danger block" onClick={() => confirm('Cancel this order?') && setOrderStatus(o.id, 'cancelled')}>Cancel Order</button>
       )}
     </>
   )
 }
+
+const STARS = [1, 2, 3, 4, 5]
+function Stars({ value, onPick, size = 26 }) {
+  return (
+    <span className="stars" style={{ fontSize: size }}>
+      {STARS.map((n) => (
+        <button key={n} type="button" disabled={!onPick} onClick={() => onPick?.(n)} aria-label={`${n} star`}
+          className={n <= value ? 'on' : ''}>★</button>
+      ))}
+    </span>
+  )
+}
+
+function OnlinePaymentStatus({ o }) {
+  const [busy, setBusy] = useState(false)
+  if (o.payment !== 'RAZORPAY') return null
+  const closed = ['cancelled', 'rejected'].includes(o.status)
+  if (o.paymentStatus === 'paid') {
+    return <div className="success">✅ Paid online{closed ? ' — refund will reach your account in 5–7 working days.' : ''}</div>
+  }
+  if (closed) return null
+  async function pay() {
+    setBusy(true)
+    const r = await payOnline(o.id)
+    setBusy(false)
+    if (r.error) alert(r.error)
+  }
+  return (
+    <div className="warn">
+      ⏳ Payment pending — the shop starts packing after you pay.
+      <button className="btn primary block" style={{ marginTop: 8 }} disabled={busy} onClick={pay}>{busy ? 'Opening…' : `Pay now · ${money(o.total)}`}</button>
+    </div>
+  )
+}
+
+function ReviewBox({ order, shop }) {
+  const [existing, setExisting] = useState(undefined) // undefined = loading
+  const [rating, setRating] = useState(0)
+  const [comment, setComment] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { fetchOrderReview(order.id).then(setExisting) }, [order.id])
+  if (existing === undefined) return null
+  if (existing) {
+    return (
+      <div className="card">
+        <b>Your rating for {shop?.name}</b>
+        <div><Stars value={existing.rating} size={20} /></div>
+        {existing.comment && <p className="muted">“{existing.comment}”</p>}
+      </div>
+    )
+  }
+  async function send() {
+    if (!rating) return alert('Please tap the stars to rate')
+    setBusy(true)
+    const r = await submitReview({ orderId: order.id, shopId: order.shopId, rating, comment })
+    setBusy(false)
+    if (r.error) return alert(r.error)
+    setExisting({ rating, comment })
+  }
+  return (
+    <div className="card">
+      <b>How was your order from {shop?.name}?</b>
+      <div style={{ margin: '6px 0' }}><Stars value={rating} onPick={setRating} /></div>
+      <textarea rows={2} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Tell others about the shop (optional)" maxLength={300} />
+      <button className="btn primary block" disabled={busy} onClick={send}>{busy ? 'Sending…' : 'Submit rating'}</button>
+    </div>
+  )
+}
+
+function ShopReviews({ shopId, count }) {
+  const [list, setList] = useState(null)
+  useEffect(() => { fetchShopReviews(shopId).then(setList) }, [shopId, count])
+  if (!list || list.length === 0) return null
+  return (
+    <>
+      <h3 className="section-title">Customer reviews</h3>
+      {list.map((r) => (
+        <div key={r.id} className="card review">
+          <div className="row"><Stars value={r.rating} size={16} /><small className="muted">{timeAgo(Date.parse(r.created_at))}</small></div>
+          {r.comment && <p>{r.comment}</p>}
+        </div>
+      ))}
+    </>
+  )
+}
+
+function ChangePassword() {
+  const [open, setOpen] = useState(false)
+  const [pw, setPw] = useState('')
+  const [pw2, setPw2] = useState('')
+  const [msg, setMsg] = useState('')
+  async function save(e) {
+    e.preventDefault()
+    if (pw !== pw2) return setMsg('Passwords do not match')
+    const r = await changeMyPassword(pw)
+    if (r.error) return setMsg(r.error)
+    setMsg('Password changed ✓'); setPw(''); setPw2('')
+    setTimeout(() => { setOpen(false); setMsg('') }, 1500)
+  }
+  if (!open) return <button className="btn ghost block" style={{ marginTop: 14 }} onClick={() => setOpen(true)}>🔑 Change password</button>
+  return (
+    <form className="card" style={{ marginTop: 14 }} onSubmit={save}>
+      <b>Change password</b>
+      <label>New password<input type="password" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" /></label>
+      <label>Repeat new password<input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" /></label>
+      {msg && <small className={msg.includes('✓') ? 'muted' : 'error-text'}>{msg}</small>}
+      <div className="actions">
+        <button type="button" className="btn ghost" onClick={() => { setOpen(false); setMsg('') }}>Cancel</button>
+        <button className="btn primary">Save</button>
+      </div>
+    </form>
+  )
+}
+export { ChangePassword }
 
 function Profile({ user }) {
   const [f, setF] = useState({ name: user.name, address: user.address || '' })
@@ -382,6 +566,7 @@ function Profile({ user }) {
           {saved ? 'Saved ✓' : 'Save'}
         </button>
       </div>
+      <ChangePassword />
       <DeleteMyAccount phone={user.phone} />
       <LegalLinks />
     </>

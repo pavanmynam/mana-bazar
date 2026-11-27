@@ -6,7 +6,7 @@ import {
 import { StatusBadge, BottomNav, Stat } from './ui'
 import Scanner, { lookupBarcode } from './Scanner'
 import { LegalLinks } from './Legal'
-import { DeleteMyAccount } from './Customer'
+import { DeleteMyAccount, ChangePassword } from './Customer'
 
 // Short two-beep alert using the Web Audio API — no sound file to ship or load.
 function playNewOrderBeep() {
@@ -79,7 +79,7 @@ export default function Owner({ user }) {
         {tab === 'orders' && <Orders db={db} orders={orders} />}
         {tab === 'products' && <Products db={db} shop={shop} />}
         {tab === 'dashboard' && <Dashboard db={db} orders={orders} shop={shop} />}
-        {tab === 'shop' && <><ShopSettings shop={shop} /><DeleteMyAccount phone={user.phone} /><LegalLinks /></>}
+        {tab === 'shop' && <><ShopSettings shop={shop} /><ChangePassword /><DeleteMyAccount phone={user.phone} /><LegalLinks /></>}
       </main>
       <BottomNav tab={tab} setTab={setTab} items={[
         ['orders', '📥', `Orders${newCount ? ` (${newCount})` : ''}`], ['products', '📦', 'Products'], ['dashboard', '📊', 'Earnings'], ['shop', '⚙️', 'Shop'],
@@ -102,11 +102,13 @@ function Orders({ db, orders }) {
       {list.map((o) => {
         const cust = db.users.find((u) => u.id === o.customerId)
         const i = ORDER_STEPS.indexOf(o.status)
-        const next = ORDER_STEPS[i + 1]
+        const awaitingPay = o.payment === 'RAZORPAY' && o.paymentStatus !== 'paid'
+        const next = awaitingPay ? null : ORDER_STEPS[i + 1]
         return (
           <div key={o.id} className={'card order-card' + (o.status === 'placed' ? ' new' : '')}>
             <div className="row"><b>#{o.code}</b><StatusBadge s={o.status} /></div>
-            <small className="muted">{timeAgo(o.createdAt)} · {o.payment}</small>
+            <small className="muted">{timeAgo(o.createdAt)} · {o.payment === 'RAZORPAY' ? 'ONLINE' : o.payment}
+              {o.payment === 'RAZORPAY' && (o.paymentStatus === 'paid' ? ' · ✅ Paid' : ' · ⏳ Waiting for customer payment')}</small>
             <ul className="items">{o.items.map((it) => <li key={it.productId}>{it.emoji} {it.name} × <b>{it.qty}</b> <span>{money(it.price * it.qty)}</span></li>)}</ul>
             <div className="row"><span>👤 {cust?.name} · 📞 {cust?.phone}</span><b>{money(o.total)}</b></div>
             <small className="muted">📍 {o.address}</small>

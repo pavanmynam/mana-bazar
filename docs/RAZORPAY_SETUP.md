@@ -37,8 +37,8 @@ Live mode ki mee website lo ee pages undali:
 - Shipping / Delivery Policy
 - Pricing details (delivery fee, commission vivaralu)
 
-➡️ **Ivi nenu Phase 5 lo Mana Bazar website lo build chestanu.** Meeru
-mee business name, address, support phone/email naaku ivvandi.
+✅ **Ready:** /contact, /terms, /privacy, /refund, /shipping on
+https://mana-bazar-rho.vercel.app (delivery fee & commission are in Terms and Shipping).
 
 ## Part D — Test keys teesukondi (KYC approve avvakamunde cheyyochu)
 
@@ -68,3 +68,29 @@ fake payment screenshots tho mosam cheyyalemu.
 Marketplace lo customer pay chesina dabbu shop ki automatic ga
 pampalante **Razorpay Route** ane product kavali. Mundu normal payments
 start chesi, orders perigaka Route activate cheddam.
+
+
+## Part F — Keys ni Vercel lo pettandi (code already ready)
+
+Vercel → mana-bazar project → **Settings → Environment Variables** → ee 5 add cheyyandi
+(Environment: Production + Preview), tarvata **Deployments → latest → Redeploy**:
+
+| Name | Value ekkada dorukutundi |
+|---|---|
+| `RAZORPAY_KEY_ID` | Razorpay → API Keys → Key ID (`rzp_test_…` / `rzp_live_…`) |
+| `RAZORPAY_KEY_SECRET` | Razorpay → API Keys → Key Secret (⚠️ secret) |
+| `RAZORPAY_WEBHOOK_SECRET` | Webhook create chesetappudu meeru pettina secret (⚠️ secret) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API Keys → `service_role` / secret key (⚠️ secret) |
+| `SUPABASE_URL` | `https://lnuptsingyembirjzjzr.supabase.co` |
+
+Webhook URL: `https://mana-bazar-rho.vercel.app/api/razorpay-webhook`
+Events: `payment.captured`, `order.paid`, `payment.failed`
+
+Keys pettina ventane cart lo **"💳 Pay online (UPI / Card / Netbanking)"** option automatic ga vastundi.
+Keys lekapothe ee option kanipinchadu, COD / direct UPI matrame untayi.
+
+### Money flow
+Customer online pay chesthe dabbu **Mana Bazar Razorpay account** ki vastundi
+(Razorpay fee ~2% cut chesi T+2 days lo mee bank ki). Shops ki meeru settle cheyyali
+(weekly, commission minus chesi). Taruvata Razorpay **Route** tho automatic split cheyyochu.
+Cancel ayina paid orders ki refund: Razorpay Dashboard → Payments → payment open → **Refund**.
