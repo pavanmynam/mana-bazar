@@ -47,6 +47,7 @@ function mapProduct(r) {
   return {
     id: r.id, shopId: r.shop_id, name: r.name, description: r.description, price: num(r.price),
     mrp: num(r.mrp ?? r.price), unit: r.unit, emoji: r.emoji, imageUrl: r.image_url, inStock: r.in_stock,
+    barcode: r.barcode || '',
   }
 }
 function mapOrder(r) {
@@ -90,6 +91,7 @@ export function useStore() {
 
 function fail(error, fallback = 'Something went wrong, please try again') {
   console.error(error)
+  if (error?.code === '23505' && /barcode/.test(error.message || '')) return 'Another product in your shop already has this barcode.'
   return (error && error.message) || fallback
 }
 function report(error) {
@@ -286,6 +288,7 @@ export async function saveProduct(p) {
   if ('unit' in p) row.unit = p.unit || '1 pc'
   if ('emoji' in p) row.emoji = p.emoji || '📦'
   if ('inStock' in p) row.in_stock = p.inStock
+  if ('barcode' in p) row.barcode = (p.barcode || '').trim() || null
   let error
   if (p.id) {
     row.updated_at = new Date().toISOString()
@@ -392,6 +395,11 @@ export function upiPayLink({ upiId, payeeName, amount, orderId }) {
   })
   return `upi://pay?${params.toString()}`
 }
+// Link a customer opens by scanning a shop's QR poster.
+export function shopLink(shopId) {
+  return `${window.location.origin}/?shop=${shopId}`
+}
+
 export function upiQrImage(upiLink, size = 220) {
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(upiLink)}`
 }

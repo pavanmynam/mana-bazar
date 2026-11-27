@@ -4,16 +4,31 @@ import {
   money, timeAgo, upiPayLink, upiQrImage, orderWhatsAppLink, distanceKm, etaWithDistance, slotLabel,
 } from '../store'
 import { StatusBadge, Tracker, BottomNav, useGeolocation } from './ui'
+import Scanner from './Scanner'
+
+// A shop QR poster opens the site as /?shop=<id>.
+function shopFromUrl() {
+  try { return new URLSearchParams(window.location.search).get('shop') } catch { return null }
+}
+// Pull a shop id out of a scanned Mana Bazar QR (full link or bare id).
+function shopIdFromCode(code) {
+  const m = /[?&]shop=([0-9a-f-]{36})/i.exec(code)
+  return m ? m[1] : null
+}
 
 export default function Customer({ user }) {
   const { db, session } = useStore()
   const [tab, setTab] = useState('home')
-  const [shopId, setShopId] = useState(null)
+  const [shopId, setShopId] = useState(shopFromUrl)
   const [cat, setCat] = useState(null)
   const [q, setQ] = useState('')
   const [trackId, setTrackId] = useState(null)
 
   useEffect(() => { window.scrollTo(0, 0) }, [tab, shopId, trackId])
+  // Tidy the ?shop= link out of the address bar once it has been used.
+  useEffect(() => {
+    if (window.location.search.includes('shop=')) window.history.replaceState(null, '', window.location.pathname)
+  }, [])
 
   const cartCount = session.cart ? session.cart.items.reduce((s, x) => s + x.qty, 0) : 0
   const go = (t) => { setTab(t); setShopId(null); setTrackId(null); window.scrollTo(0, 0) }
@@ -45,10 +60,24 @@ export default function Customer({ user }) {
 function Home({ db, user, cat, setCat, q, setQ, openShop }) {
   const geo = useGeolocation()
   const shops = db.shops.filter((s) => s.status === 'approved')
+  const [scanning, setScanning] = useState(false)
   const query = q.trim().toLowerCase()
   const matchingProducts = query
-    ? db.products.filter((p) => p.name.toLowerCase().includes(query) && shops.some((s) => s.id === p.shopId))
+    ? db.products.filter((p) => (p.name.toLowerCase().includes(query) || (p.barcode && p.barcode === q.trim())) && shops.some((s) => s.id === p.shopId))
     : []
+
+  function onScan(code) {
+    setScanning(false)
+    const sid = shopIdFromCode(code)
+    if (sid) {
+      if (shops.some((s) => s.id === sid)) openShop(sid)
+      else alert('This shop is not available right now.')
+      return
+    }
+    if (/^https?:\/\//i.test(code)) return alert('This QR is not a Mana Bazar shop code.')
+    setCat(null)
+    setQ(code) // product barcode → shows every shop that sells it
+  }
   let list = shops.filter((s) =>
     (!cat || s.category === cat) &&
     (!query || s.name.toLowerCase().includes(query) || matchingProducts.some((p) => p.shopId === s.id)))
@@ -74,7 +103,9 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
         <span>🔍</span>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search shops, rice, medicines, cake..." />
         {q && <button onClick={() => setQ('')}>✕</button>}
+        <button onClick={() => setScanning(true)} aria-label="Scan barcode or shop QR" title="Scan barcode or shop QR">📷</button>
       </div>
+      {scanning && <Scanner title="Scan product barcode or shop QR" onResult={onScan} onClose={() => setScanning(false)} />}
 
       {!query && !cat && (
         <div className="banner">
@@ -132,7 +163,7 @@ function ShopPage({ db, cart, shopId, back }) {
   const shop = db.shops.find((s) => s.id === shopId)
   const [q, setQ] = useState('')
   if (!shop) return <><button className="back" onClick={back}>← Back</button><div className="empty">Shop not found</div></>
-  const products = db.products.filter((p) => p.shopId === shopId && p.name.toLowerCase().includes(q.toLowerCase()))
+  const products = db.products.filter((p) => p.shopId === shopId && (p.name.toLowerCase().includes(q.toLowerCase()) || (p.barcode && p.barcode === q.trim())))
   const qty = (pid) => (cart?.shopId === shopId ? cart.items.find((x) => x.productId === pid)?.qty || 0 : 0)
   const c = CATEGORIES.find((x) => x.id === shop.category)
 

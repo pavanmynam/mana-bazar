@@ -223,10 +223,15 @@ create table if not exists public.products (
   in_stock    boolean not null default true,
   stock_qty   int,                               -- null = not tracked
   offer_text  text,                              -- e.g. 'Buy 2 get 1'
+  barcode     text,                              -- EAN/UPC printed on the pack
   updated_at  timestamptz not null default now(),
   created_at  timestamptz not null default now()
 );
 create index if not exists products_shop_idx on public.products(shop_id);
+alter table public.products add column if not exists barcode text;  -- for older databases
+create index if not exists products_barcode_idx on public.products (barcode) where barcode is not null;
+create unique index if not exists products_shop_barcode_uniq on public.products (shop_id, barcode)
+  where barcode is not null and barcode <> '';
 
 -- ---------------------------------------------------------------------
 -- 5. DELIVERY PARTNERS (extra details for role = 'delivery')

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   useStore, CATEGORIES, updateShop, saveProduct, deleteProduct, setOrderStatus, money, timeAgo, ORDER_STEPS, STATUS_LABEL,
+  shopLink, upiQrImage,
 } from '../store'
 import { StatusBadge, BottomNav, Stat } from './ui'
+import Scanner, { lookupBarcode } from './Scanner'
 
 // Short two-beep alert using the Web Audio API — no sound file to ship or load.
 function playNewOrderBeep() {
@@ -120,37 +122,76 @@ function Orders({ db, orders }) {
   )
 }
 
-const empty = { name: '', price: '', mrp: '', unit: '', emoji: '📦' }
+const empty = { name: '', price: '', mrp: '', unit: '', emoji: '📦', barcode: '' }
 
 function Products({ db, shop }) {
   const products = db.products.filter((p) => p.shopId === shop.id)
   const [edit, setEdit] = useState(null)
+  const [scan, setScan] = useState(null) // null | 'find' (open/add product) | 'field' (fill barcode in form)
+  const [hint, setHint] = useState('')
+
+  async function onScan(code) {
+    const mode = scan
+    setScan(null)
+    if (mode === 'field') {
+      setEdit((e) => ({ ...e, barcode: code }))
+      return
+    }
+    const found = products.find((p) => p.barcode === code)
+    if (found) {
+      setEdit({ ...found })
+      setHint(`Found: ${found.name} — update price or stock and Save.`)
+      return
+    }
+    setEdit({ ...empty, barcode: code })
+    setHint('New barcode — looking up product name…')
+    const info = await lookupBarcode(code)
+    if (info) {
+      setEdit((e) => (e && e.barcode === code ? { ...e, name: e.name || info.name, unit: e.unit || info.unit } : e))
+      setHint('Name filled from the barcode — check it, add your price, and Save.')
+    } else {
+      setHint('New product — type the name and price, then Save.')
+    }
+  }
 
   function save(e) {
     e.preventDefault()
     if (!edit.name || !edit.price) return alert('Name and price are required')
-    saveProduct({ ...edit, shopId: shop.id, price: Number(edit.price), mrp: Number(edit.mrp || edit.price) })
-    setEdit(null)
+    const code = (edit.barcode || '').trim()
+    if (code && products.some((p) => p.barcode === code && p.id !== edit.id)) return alert('Another product in your shop already has this barcode.')
+    saveProduct({ ...edit, barcode: code, shopId: shop.id, price: Number(edit.price), mrp: Number(edit.mrp || edit.price) })
+    setEdit(null); setHint('')
   }
 
   return (
     <>
+      {scan && <Scanner title={scan === 'find' ? 'Scan product barcode' : 'Scan barcode'} onResult={onScan} onClose={() => setScan(null)} />}
       <div className="row">
         <h3 className="section-title">{products.length} Products</h3>
-        <button className="btn primary sm" onClick={() => setEdit({ ...empty })}>+ Add Product</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn sm" onClick={() => setScan('find')}>📷 Scan</button>
+          <button className="btn primary sm" onClick={() => { setEdit({ ...empty }); setHint('') }}>+ Add Product</button>
+        </div>
       </div>
       {edit && (
         <form className="card form" onSubmit={save}>
           <h3>{edit.id ? 'Edit Product' : 'New Product'}</h3>
+          {hint && <small className="note">{hint}</small>}
           <div className="grid2">
             <label>Name<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder="e.g. Basmati Rice" /></label>
             <label>Icon (emoji)<input value={edit.emoji} onChange={(e) => setEdit({ ...edit, emoji: e.target.value })} maxLength={4} /></label>
             <label>Selling Price ₹<input type="number" value={edit.price} onChange={(e) => setEdit({ ...edit, price: e.target.value })} /></label>
             <label>MRP ₹<input type="number" value={edit.mrp} onChange={(e) => setEdit({ ...edit, mrp: e.target.value })} /></label>
             <label>Unit / Size<input value={edit.unit} onChange={(e) => setEdit({ ...edit, unit: e.target.value })} placeholder="1 kg, 500 ml, 1 pc" /></label>
+            <label>Barcode (optional)
+              <span style={{ display: 'flex', gap: 6 }}>
+                <input value={edit.barcode || ''} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan or type" inputMode="numeric" style={{ flex: 1 }} />
+                <button type="button" className="btn sm" onClick={() => setScan('field')} aria-label="Scan barcode">📷</button>
+              </span>
+            </label>
           </div>
           <div className="actions">
-            <button type="button" className="btn ghost" onClick={() => setEdit(null)}>Cancel</button>
+            <button type="button" className="btn ghost" onClick={() => { setEdit(null); setHint('') }}>Cancel</button>
             <button className="btn primary">Save</button>
           </div>
         </form>
@@ -161,7 +202,7 @@ function Products({ db, shop }) {
             <div className="p-emoji">{p.emoji}</div>
             <div className="p-info">
               <b>{p.name}</b>
-              <small>{p.unit}</small>
+              <small>{p.unit}{p.barcode ? ` · ▌▌ ${p.barcode}` : ''}</small>
               <div><span className="price">{money(p.price)}</span>{p.mrp > p.price && <s>{money(p.mrp)}</s>}</div>
             </div>
             <div className="p-actions">
@@ -244,6 +285,36 @@ function ShopSettings({ shop }) {
       <button className="btn primary" onClick={() => { updateShop(shop.id, { ...f, eta: Number(f.eta) }); setSaved(true); setTimeout(() => setSaved(false), 1500) }}>
         {saved ? 'Saved ✓' : 'Save Changes'}
       </button>
+      <ShopQr shop={shop} />
     </div>
+  )
+}
+
+// Printable QR poster: customers scan it with any phone camera to open this shop.
+function ShopQr({ shop }) {
+  const link = shopLink(shop.id)
+  const [copied, setCopied] = useState(false)
+  async function share() {
+    try {
+      if (navigator.share) await navigator.share({ title: shop.name, text: `Order from ${shop.name} on Mana Bazar`, url: link })
+      else { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500) }
+    } catch { /* user cancelled share */ }
+  }
+  return (
+    <>
+      <h3 style={{ marginTop: 24 }}>Shop QR Poster</h3>
+      <small className="muted">Print this and stick it at your counter. Customers scan it with their phone camera to open your shop and order.</small>
+      <div className="qr-poster">
+        <div className="qr-brand">🛍️ Mana Bazar</div>
+        <b className="qr-shop">{shop.icon} {shop.name}</b>
+        <img src={upiQrImage(link, 400)} alt={`QR code for ${shop.name}`} width={220} height={220} />
+        <div className="qr-cta">Scan to order · Home delivery</div>
+        <small className="qr-link">{link}</small>
+      </div>
+      <div className="actions">
+        <button type="button" className="btn ghost" onClick={share}>{copied ? 'Link copied ✓' : 'Share link'}</button>
+        <button type="button" className="btn primary" onClick={() => window.print()}>🖨️ Print poster</button>
+      </div>
+    </>
   )
 }
