@@ -5,6 +5,7 @@ import {
   money, timeAgo, upiPayLink, upiQrImage, orderWhatsAppLink, distanceKm, etaWithDistance, slotLabel,
 } from '../store'
 import { StatusBadge, Tracker, BottomNav } from './ui'
+import LiveMap from './LiveMap'
 import { useDeliveryLocation, LocationSheet, useNow, gpsFix, reverseGeocode, saveLocation } from '../location'
 import Scanner from './Scanner'
 import { sfx, fxPrefs, setFxPref } from '../fx'
@@ -585,6 +586,7 @@ function EtaChip({ o, shop }) {
 }
 
 function TrackOrder({ db, id, back }) {
+  const now = useNow(5000)
   const o = db.orders.find((x) => x.id === id)
   if (!o) return null
   const shop = db.shops.find((s) => s.id === o.shopId)
@@ -596,6 +598,10 @@ function TrackOrder({ db, id, back }) {
         <p className="muted">{shop?.icon} {shop?.name} · 📞 {shop?.phone}</p>
         {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mee Bazar.</div>}
         <OnlinePaymentStatus o={o} />
+        {ACTIVE.concat('delivered').includes(o.status) && (
+          <LiveMap shop={shop} home={{ lat: o.lat, lng: o.lng }} status={o.status}
+            progress={(now - o.createdAt) / (orderEta(o, shop).mins * 60000)} />
+        )}
         <OrderTimer o={o} shop={shop} />
         <Tracker o={o} />
         <small className="muted">Live updates: when the shop owner changes status, it shows here.</small>
