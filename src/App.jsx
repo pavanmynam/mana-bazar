@@ -20,10 +20,14 @@ function MainApp() {
     return <div className="auth"><div className="auth-hero"><div className="logo-big">🛍️</div><h1>Mee Bazar</h1><p>Loading…</p></div></div>
   }
   if (!user) return <Auth />
-  // Logged in but opened another role's link (e.g. owner opening /admin): send to their own page.
+  // Logged in but opened another role's link (e.g. admin opening /delivery on
+  // the same phone): ask instead of silently showing the other panel.
   const want = roleFromPath()
+  if (want !== user.role && want !== 'customer') {
+    return <WrongRole user={user} want={want} />
+  }
   if (want !== user.role && window.location.pathname !== ROLE_PATHS[user.role]) {
-    if (want !== 'customer' || user.role !== 'customer') window.history.replaceState(null, '', ROLE_PATHS[user.role] + window.location.search)
+    window.history.replaceState(null, '', ROLE_PATHS[user.role] + window.location.search)
   }
 
   return (
@@ -45,6 +49,21 @@ function MainApp() {
       {user.role === 'owner' && <Owner user={user} />}
       {user.role === 'admin' && <Admin user={user} />}
       {user.role === 'delivery' && <Delivery user={user} />}
+    </div>
+  )
+}
+
+const ROLE_NAME = { customer: 'Customer', owner: 'Shop Owner', delivery: 'Delivery Partner', admin: 'Admin' }
+function WrongRole({ user, want }) {
+  return (
+    <div className="auth">
+      <div className="auth-hero"><div className="logo-big">🔁</div><h1>Mee Bazar</h1></div>
+      <div className="card auth-card center">
+        <h2>You are logged in as {ROLE_NAME[user.role]}</h2>
+        <p>This link is the <b>{ROLE_NAME[want]}</b> login. To use it, logout first and login with the {ROLE_NAME[want].toLowerCase()} account.</p>
+        <button className="btn primary block" onClick={async () => { await logout(); window.location.reload() }}>Logout & open {ROLE_NAME[want]} login</button>
+        <button className="btn block" style={{ marginTop: 8 }} onClick={() => { window.location.href = ROLE_PATHS[user.role] }}>Continue as {ROLE_NAME[user.role]}</button>
+      </div>
     </div>
   )
 }
