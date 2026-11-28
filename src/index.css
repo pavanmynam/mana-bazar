@@ -377,3 +377,13 @@ html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation: none 
 .pw-row { display: flex; gap: 6px; align-items: center; }
 .pw-row input { flex: 1; }
 .pw-eye { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 10px; cursor: pointer; font-size: 16px; }
+
+/* ---------- live map ---------- */
+.live-map { margin: 10px 0; position: relative; }
+.live-map-box { height: 240px; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.12); z-index: 0; }
+.map-pin { background: none; border: 0; }
+.map-pin span { display: grid; place-items: center; width: 40px; height: 40px; font-size: 21px; background: #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.map-pin.shop span { border: 3px solid #ff5722; }
+.map-pin.home span { border: 3px solid #2e7d32; }
+.map-pin.rider span { border: 3px solid #1565c0; animation: pop 1.2s ease infinite; }
+.map-note { position: absolute; left: 10px; bottom: 8px; background: rgba(255,255,255,.9); padding: 2px 8px; border-radius: 8px; font-size: 11px; z-index: 500; }
