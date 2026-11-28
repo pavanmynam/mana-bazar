@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import { useStore, CATEGORIES, updateShop, updateUser, updateSettings, setOrderStatus, money, timeAgo, STATUS_LABEL, adminSetPassword } from '../store'
+import { DocLink, docLabel, requiredDocs, licenceFor } from './ShopProfile'
 import { StatusBadge, BottomNav, Stat } from './ui'
 
 export default function Admin() {
@@ -54,7 +55,64 @@ function Dashboard({ db, goShops }) {
   )
 }
 
+const CHECKS = [
+  ['photo', 'Shop photo is real and shows the name board'],
+  ['details', 'Department, address & description are correct'],
+  ['docs', 'Documents checked (ID, shop proof, licence)'],
+  ['phone', 'Called the owner — phone number verified'],
+]
+
+function ShopReview({ s, owner, onClose }) {
+  const [note, setNote] = useState(s.kycNote || '')
+  const done = (k) => (k === 'phone' ? s.phoneVerified && s.checklist.phone : !!s.checklist[k])
+  const allDone = CHECKS.every(([k]) => done(k))
+  const cat = CATEGORIES.find((c) => c.id === s.category)
+  const lic = licenceFor(s.category)
+  const missingDocs = requiredDocs(s.category).filter((t) => !s.kycDocs.some((d) => d.type === t))
+  function toggle(k, v) {
+    const checklist = { ...s.checklist, [k]: v }
+    updateShop(s.id, k === 'phone' ? { checklist, phoneVerified: v } : { checklist })
+  }
+  return (
+    <div className="review card">
+      <div className="row"><h3>{s.icon} {s.name}</h3><button className="btn ghost sm" onClick={onClose}>✕ Close</button></div>
+      <div className="review-grid">
+        <div>
+          {s.photoUrl ? <a href={s.photoUrl} target="_blank" rel="noreferrer"><img className="review-photo" src={s.photoUrl} alt="Shop" /></a>
+            : <div className="review-photo empty">No shop photo yet</div>}
+        </div>
+        <div className="review-info">
+          <p><b>Department:</b> {cat?.icon} {cat?.name}</p>
+          <p><b>Address:</b> {s.address || '—'}</p>
+          <p><b>About:</b> {s.description || <i className="muted">No description</i>}</p>
+          <p><b>Owner:</b> {s.legalName || owner?.name || '—'} · <a href={`tel:${s.phone || owner?.phone}`}>📞 {s.phone || owner?.phone}</a>
+            {' '}<a href={`https://wa.me/91${String(s.phone || owner?.phone || '').replace(/\D/g, '').slice(-10)}`} target="_blank" rel="noreferrer">WhatsApp</a></p>
+          <p><b>{lic.label.replace(' (optional)', '')}:</b> {s[lic.key] || '—'} · <b>GST:</b> {s.gst || '—'}</p>
+          <p><b>Documents:</b> {s.kycDocs.length ? s.kycDocs.map((d) => <Fragment key={d.path}><DocLink doc={d} />{' '}</Fragment>) : <i className="muted">none uploaded</i>}</p>
+          {missingDocs.length > 0 && <small className="error-text">Missing: {missingDocs.map(docLabel).join(', ')}</small>}
+          <p><b>KYC:</b> {s.kycStatus.replace('_', ' ')}</p>
+        </div>
+      </div>
+      <h4>Approval checklist</h4>
+      {CHECKS.map(([k, label]) => (
+        <label key={k} className="check-row">
+          <input type="checkbox" checked={done(k)} onChange={(e) => toggle(k, e.target.checked)} /> {label}
+        </label>
+      ))}
+      <label>Note to owner (shown if you send back)<input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Shop photo is blurry, please upload again" /></label>
+      <div className="actions">
+        <button className="btn ghost" onClick={() => { if (!note.trim()) return alert('Write a note so the owner knows what to fix'); updateShop(s.id, { kycStatus: 'rejected', kycNote: note.trim() }) }}>Send back to owner</button>
+        <button className="btn primary" disabled={!allDone} title={allDone ? '' : 'Tick all checks first'}
+          onClick={() => { updateShop(s.id, { status: 'approved', kycStatus: 'verified', kycNote: '' }); onClose() }}>
+          {allDone ? '✅ Approve shop' : `Approve (${CHECKS.filter(([k]) => done(k)).length}/${CHECKS.length} checks)`}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function Shops({ db }) {
+  const [reviewId, setReviewId] = useState(null)
   const [filter, setFilter] = useState('all')
   const list = db.shops.filter((s) => filter === 'all' || s.status === filter)
   return (
@@ -67,6 +125,10 @@ function Shops({ db }) {
           </button>
         ))}
       </div>
+      {reviewId && db.shops.find((x) => x.id === reviewId) && (() => {
+        const rs = db.shops.find((x) => x.id === reviewId)
+        return <ShopReview s={rs} owner={db.users.find((u) => u.id === rs.ownerId)} onClose={() => setReviewId(null)} />
+      })()}
       <div className="table-wrap">
         <table>
           <thead><tr><th>Shop</th><th>Category</th><th>Owner</th><th>Orders</th><th>Status</th><th>Action</th></tr></thead>
@@ -76,13 +138,14 @@ function Shops({ db }) {
               const c = CATEGORIES.find((x) => x.id === s.category)
               return (
                 <tr key={s.id}>
-                  <td><b>{s.icon} {s.name}</b><br /><small className="muted">{s.address}</small></td>
+                  <td><b>{s.icon} {s.name}</b>{s.isSample && <small className="badge">demo</small>}<br /><small className="muted">{s.address}</small>
+                    {s.status === 'pending' && <><br /><small className="muted">KYC: {s.kycStatus.replace('_', ' ')} · {CHECKS.filter(([k]) => (k === 'phone' ? s.phoneVerified && s.checklist.phone : s.checklist[k])).length}/{CHECKS.length} checks</small></>}</td>
                   <td>{c?.icon} {c?.name}</td>
                   <td>{owner?.name}<br /><small className="muted">{owner?.phone}</small></td>
                   <td>{db.orders.filter((o) => o.shopId === s.id).length}</td>
                   <td><span className={'badge sh-' + s.status}>{s.status}</span>{s.status === 'approved' && !s.open && <small className="muted"> (closed)</small>}</td>
                   <td className="nowrap">
-                    {s.status !== 'approved' && <button className="btn primary sm" onClick={() => updateShop(s.id, { status: 'approved' })}>Approve</button>}
+                    <button className="btn sm" onClick={() => { setReviewId(s.id); window.scrollTo(0, 0) }}>{s.status === 'pending' ? '🔍 Review' : 'View'}</button>
                     {s.status !== 'blocked' && <button className="btn danger sm" onClick={() => confirm(`Block ${s.name}?`) && updateShop(s.id, { status: 'blocked' })}>Block</button>}
                   </td>
                 </tr>

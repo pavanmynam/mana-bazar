@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  useStore, CATEGORIES, updateShop, saveProduct, deleteProduct, setOrderStatus, money, timeAgo, ORDER_STEPS, STATUS_LABEL,
+  useStore, CATEGORIES, updateShop, saveProduct, fetchCosts, deleteProduct, setOrderStatus, money, timeAgo, ORDER_STEPS, STATUS_LABEL,
   shopLink, upiQrImage,
 } from '../store'
 import { StatusBadge, BottomNav, Stat } from './ui'
 import Scanner, { lookupBarcode } from './Scanner'
 import { LegalLinks } from './Legal'
-import { DeleteMyAccount, ChangePassword } from './Customer'
+import { DeleteMyAccount, ChangePassword, FxSettings } from './Customer'
+import { ShopProfileEditor, MultiPhotoPicker } from './ShopProfile'
 
 // Short two-beep alert using the Web Audio API — no sound file to ship or load.
 function playNewOrderBeep() {
@@ -57,7 +58,9 @@ export default function Owner({ user }) {
           {shop.status === 'pending'
             ? <p>Your shop is waiting for <b>Admin approval</b>. Once approved, customers can see your shop and place orders.</p>
             : <p>Your shop has been <b>blocked</b> by Admin. Please contact Mana Bazar support.</p>}
+          {shop.status === 'pending' && <p className="muted">To get approved faster, add your shop photo, description and documents below and tap <b>Submit for verification</b>.</p>}
         </div>
+        {shop.status === 'pending' && <ShopProfileEditor shop={shop} />}
       </main>
     )
   }
@@ -79,7 +82,7 @@ export default function Owner({ user }) {
         {tab === 'orders' && <Orders db={db} orders={orders} />}
         {tab === 'products' && <Products db={db} shop={shop} />}
         {tab === 'dashboard' && <Dashboard db={db} orders={orders} shop={shop} />}
-        {tab === 'shop' && <><ShopSettings shop={shop} /><ChangePassword /><DeleteMyAccount phone={user.phone} /><LegalLinks /></>}
+        {tab === 'shop' && <><ShopSettings shop={shop} /><FxSettings /><ChangePassword /><DeleteMyAccount phone={user.phone} /><LegalLinks /></>}
       </main>
       <BottomNav tab={tab} setTab={setTab} items={[
         ['orders', '📥', `Orders${newCount ? ` (${newCount})` : ''}`], ['products', '📦', 'Products'], ['dashboard', '📊', 'Earnings'], ['shop', '⚙️', 'Shop'],
@@ -126,7 +129,25 @@ function Orders({ db, orders }) {
   )
 }
 
-const empty = { name: '', price: '', mrp: '', unit: '', emoji: '📦', barcode: '' }
+const empty = { name: '', price: '', mrp: '', unit: '', emoji: '📦', barcode: '', images: [], type: '', description: '', stockQty: '', cost: '', offer: '' }
+
+// Suggested product types per department (owner can type their own too).
+export const PRODUCT_TYPES = {
+  grocery: ['Rice & Atta', 'Dals & Pulses', 'Oils & Ghee', 'Masalas & Spices', 'Sugar, Salt & Jaggery', 'Dry Fruits', 'Snacks & Biscuits', 'Tea & Coffee', 'Instant Food', 'Cleaning', 'Personal Care', 'Baby Care'],
+  supermarket: ['Staples', 'Snacks', 'Beverages', 'Dairy', 'Frozen', 'Home Care', 'Personal Care', 'Kitchen'],
+  fruits: ['Fruits', 'Vegetables', 'Leafy Greens', 'Exotic', 'Herbs'],
+  dairy: ['Milk', 'Curd & Buttermilk', 'Paneer & Cheese', 'Butter & Ghee', 'Eggs'],
+  bakery: ['Cakes', 'Breads', 'Puffs & Snacks', 'Cookies', 'Pastries'],
+  sweets: ['Sweets', 'Namkeen', 'Dry Sweets', 'Bengali Sweets'],
+  restaurant: ['Biryani', 'Meals', 'Starters', 'Curries', 'Breads', 'Tiffins', 'Beverages', 'Desserts'],
+  medical: ['Medicines', 'Pain Relief', 'Cold & Cough', 'Vitamins', 'First Aid', 'Personal Care', 'Baby Care', 'Devices'],
+  electronics: ['TV & Audio', 'Kitchen Appliances', 'Home Appliances', 'Accessories'],
+  mobile: ['Smartphones', 'Chargers & Cables', 'Earphones', 'Covers & Guards', 'Power Banks'],
+  clothing: ['Men', 'Women', 'Kids', 'Ethnic', 'Innerwear'],
+  footwear: ['Men', 'Women', 'Kids', 'Sports', 'Slippers'],
+  stationery: ['Notebooks', 'Pens & Pencils', 'Art & Craft', 'Office', 'School Kits'],
+  books: ['Textbooks', 'Competitive Exams', 'Novels', 'Children', 'Telugu Books'],
+}
 
 function Products({ db, shop }) {
   const products = db.products.filter((p) => p.shopId === shop.id)
@@ -143,7 +164,8 @@ function Products({ db, shop }) {
     }
     const found = products.find((p) => p.barcode === code)
     if (found) {
-      setEdit({ ...found })
+      const costs = await fetchCosts([found.id])
+      setEdit({ ...found, stockQty: found.stockQty ?? '', cost: costs[found.id] ?? '' })
       setHint(`Found: ${found.name} — update price or stock and Save.`)
       return
     }
@@ -158,12 +180,14 @@ function Products({ db, shop }) {
     }
   }
 
-  function save(e) {
+  async function save(e) {
     e.preventDefault()
     if (!edit.name || !edit.price) return alert('Name and price are required')
     const code = (edit.barcode || '').trim()
     if (code && products.some((p) => p.barcode === code && p.id !== edit.id)) return alert('Another product in your shop already has this barcode.')
-    saveProduct({ ...edit, barcode: code, shopId: shop.id, price: Number(edit.price), mrp: Number(edit.mrp || edit.price) })
+    if (Number(edit.mrp) && Number(edit.mrp) < Number(edit.price)) return alert('MRP cannot be less than the selling price')
+    const r = await saveProduct({ ...edit, barcode: code, shopId: shop.id, price: Number(edit.price), mrp: Number(edit.mrp || edit.price) })
+    if (r?.error) return
     setEdit(null); setHint('')
   }
 
@@ -187,6 +211,13 @@ function Products({ db, shop }) {
             <label>Selling Price ₹<input type="number" value={edit.price} onChange={(e) => setEdit({ ...edit, price: e.target.value })} /></label>
             <label>MRP ₹<input type="number" value={edit.mrp} onChange={(e) => setEdit({ ...edit, mrp: e.target.value })} /></label>
             <label>Unit / Size<input value={edit.unit} onChange={(e) => setEdit({ ...edit, unit: e.target.value })} placeholder="1 kg, 500 ml, 1 pc" /></label>
+            <label>Type
+              <input list="ptypes" value={edit.type || ''} onChange={(e) => setEdit({ ...edit, type: e.target.value })} placeholder="e.g. Rice & Atta" />
+              <datalist id="ptypes">{(PRODUCT_TYPES[shop.category] || []).map((t) => <option key={t} value={t} />)}</datalist>
+            </label>
+            <label>Stock quantity<input type="number" min="0" value={edit.stockQty ?? ''} onChange={(e) => setEdit({ ...edit, stockQty: e.target.value })} placeholder="Leave empty if not counting" /></label>
+            <label>Offer (optional)<input value={edit.offer || ''} maxLength={40} onChange={(e) => setEdit({ ...edit, offer: e.target.value })} placeholder="e.g. Buy 2 get 1 free" /></label>
+            <label>Your cost price ₹ <small className="muted">(only you see this)</small><input type="number" min="0" value={edit.cost ?? ''} onChange={(e) => setEdit({ ...edit, cost: e.target.value })} /></label>
             <label>Barcode (optional)
               <span style={{ display: 'flex', gap: 6 }}>
                 <input value={edit.barcode || ''} onChange={(e) => setEdit({ ...edit, barcode: e.target.value })} placeholder="Scan or type" inputMode="numeric" style={{ flex: 1 }} />
@@ -194,6 +225,12 @@ function Products({ db, shop }) {
               </span>
             </label>
           </div>
+          <label>Description<textarea rows={3} maxLength={1000} value={edit.description || ''} onChange={(e) => setEdit({ ...edit, description: e.target.value })} placeholder="Brand, quality, ingredients, how to use, pack details…" /></label>
+          <b>Photos <small className="muted">(up to 5 — tap a photo to make it the cover)</small></b>
+          <MultiPhotoPicker images={edit.images || []} onChange={(images) => setEdit((e2) => ({ ...e2, images }))} />
+          {Number(edit.cost) > 0 && Number(edit.price) > 0 && (
+            <small className="muted">Your margin: {money(Number(edit.price) - Number(edit.cost))} per unit ({Math.round(((Number(edit.price) - Number(edit.cost)) / Number(edit.price)) * 100)}%)</small>
+          )}
           <div className="actions">
             <button type="button" className="btn ghost" onClick={() => { setEdit(null); setHint('') }}>Cancel</button>
             <button className="btn primary">Save</button>
@@ -203,10 +240,11 @@ function Products({ db, shop }) {
       <div className="products">
         {products.map((p) => (
           <div key={p.id} className={'product' + (p.inStock ? '' : ' oos')}>
-            <div className="p-emoji">{p.emoji}</div>
+            {p.images[0] ? <img className="p-img" src={p.images[0]} alt="" loading="lazy" /> : <div className="p-emoji">{p.emoji}</div>}
             <div className="p-info">
               <b>{p.name}</b>
-              <small>{p.unit}{p.barcode ? ` · ▌▌ ${p.barcode}` : ''}</small>
+              <small>{p.unit}{p.type ? ` · ${p.type}` : ''}{p.stockQty != null ? ` · ${p.stockQty} left` : ''}{p.barcode ? ` · ▌▌ ${p.barcode}` : ''}</small>
+              {p.offer && <span className="offer-tag">🏷️ {p.offer}</span>}
               <div><span className="price">{money(p.price)}</span>{p.mrp > p.price && <s>{money(p.mrp)}</s>}</div>
             </div>
             <div className="p-actions">
@@ -215,7 +253,7 @@ function Products({ db, shop }) {
                 <span className="slider" /><small>{p.inStock ? 'In stock' : 'Out'}</small>
               </label>
               <div>
-                <button className="icon-btn" onClick={() => setEdit({ ...p })}>✏️</button>
+                <button className="icon-btn" onClick={async () => { const c = await fetchCosts([p.id]); setEdit({ ...p, stockQty: p.stockQty ?? '', cost: c[p.id] ?? '' }); setHint('') }}>✏️</button>
                 <button className="icon-btn" onClick={() => confirm(`Delete ${p.name}?`) && deleteProduct(p.id)}>🗑️</button>
               </div>
             </div>
@@ -260,11 +298,12 @@ function Dashboard({ db, orders }) {
 function ShopSettings({ shop }) {
   const [f, setF] = useState({
     name: shop.name, address: shop.address, phone: shop.phone, eta: shop.eta, icon: shop.icon, category: shop.category,
-    upiId: shop.upiId || '',
+    upiId: shop.upiId || '', notice: shop.notice || '',
   })
   const [saved, setSaved] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   return (
+    <>
     <div className="card form">
       <h3>Shop Details</h3>
       <div className="grid2">
@@ -279,6 +318,10 @@ function ShopSettings({ shop }) {
         <label>Delivery time (min)<input type="number" value={f.eta} onChange={set('eta')} /></label>
       </div>
       <label>
+        Note for customers (shown on top of your shop)
+        <input value={f.notice} onChange={set('notice')} maxLength={120} placeholder="e.g. 🎉 Sankranti offer: 10% off on all sweets · Closed on Sunday" />
+      </label>
+      <label>
         Your UPI ID (for customer UPI payments)
         <input value={f.upiId} onChange={set('upiId')} placeholder="e.g. shopname@okaxis / 9876543210@ybl" />
       </label>
@@ -291,6 +334,8 @@ function ShopSettings({ shop }) {
       </button>
       <ShopQr shop={shop} />
     </div>
+    <ShopProfileEditor shop={shop} />
+    </>
   )
 }
 

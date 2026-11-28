@@ -6,6 +6,7 @@ import {
 } from '../store'
 import { StatusBadge, Tracker, BottomNav, useGeolocation } from './ui'
 import Scanner from './Scanner'
+import { sfx, fxPrefs, setFxPref } from '../fx'
 import { LegalLinks, deletionRequestLinks } from './Legal'
 
 // A shop QR poster opens the site as /?shop=<id>.
@@ -141,7 +142,7 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
           const etaWindow = etaWithDistance(s.eta, s.km)
           return (
             <button key={s.id} className={'shop-card' + (s.open ? '' : ' closed')} onClick={() => openShop(s.id)}>
-              <div className="shop-img" style={{ background: c?.color }}>{s.icon}</div>
+              <div className="shop-img" style={{ background: c?.color }}>{s.photoUrl ? <img src={s.photoUrl} alt="" loading="lazy" /> : s.icon}</div>
               <div className="shop-info">
                 <b>{s.name}</b>
                 <small>{c?.name} · {s.address}</small>
@@ -151,6 +152,7 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
                   <span>🕒 by {slotLabel(etaWindow.max)}</span>
                   {!s.open && <span className="closed-tag">Closed now</span>}
                 </div>
+                {s.notice && <small className="offer-tag">📢 {s.notice}</small>}
                 {hits.length > 0 && <small className="hits">Has: {hits.slice(0, 3).map((p) => p.name).join(', ')}</small>}
               </div>
             </button>
@@ -164,14 +166,37 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
 function ShopPage({ db, cart, shopId, back }) {
   const shop = db.shops.find((s) => s.id === shopId)
   const [q, setQ] = useState('')
+  const [type, setType] = useState('')
+  const [detail, setDetail] = useState(null)
   if (!shop) return <><button className="back" onClick={back}>← Back</button><div className="empty">Shop not found</div></>
-  const products = db.products.filter((p) => p.shopId === shopId && (p.name.toLowerCase().includes(q.toLowerCase()) || (p.barcode && p.barcode === q.trim())))
+  const all = db.products.filter((p) => p.shopId === shopId)
+  const types = [...new Set(all.map((p) => p.type).filter(Boolean))]
+  const query = q.trim().toLowerCase()
+  const products = all.filter((p) => (!type || p.type === type) &&
+    (!query || p.name.toLowerCase().includes(query) || (p.type || '').toLowerCase().includes(query) || (p.barcode && p.barcode === q.trim())))
   const qty = (pid) => (cart?.shopId === shopId ? cart.items.find((x) => x.productId === pid)?.qty || 0 : 0)
   const c = CATEGORIES.find((x) => x.id === shop.category)
+  // Show products grouped under their type, like sections in Zepto/Instamart.
+  const groups = types.length && !type && !query
+    ? [...types.map((t) => [t, products.filter((p) => p.type === t)]), ['Other', products.filter((p) => !p.type)]].filter(([, l]) => l.length)
+    : [['', products]]
+
+  const addControls = (p) => {
+    const n = qty(p.id)
+    return !p.inStock ? <span className="oos-tag">Out of stock</span>
+      : !shop.open ? null
+        : n === 0 ? <button className="btn add" onClick={(e) => { e.stopPropagation(); addToCart(p, 1) }}>ADD</button>
+          : (
+            <div className="qty" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => addToCart(p, -1)}>−</button><b key={n}>{n}</b><button onClick={() => addToCart(p, 1)}>+</button>
+            </div>
+          )
+  }
 
   return (
     <>
       <button className="back" onClick={back}>← Back</button>
+      {shop.photoUrl && <img className="shop-cover" src={shop.photoUrl} alt={shop.name} />}
       <div className="shop-head" style={{ background: c?.color }}>
         <div className="shop-img big">{shop.icon}</div>
         <div>
@@ -184,38 +209,77 @@ function ShopPage({ db, cart, shopId, back }) {
           </div>
         </div>
       </div>
+      {shop.notice && <div className="shop-notice">📢 {shop.notice}</div>}
+      {shop.description && <p className="shop-about">{shop.description}</p>}
       {!shop.open && <div className="warn">{shop.closedMessage || "This shop is closed right now. You can browse but can't order."}</div>}
       <div className="search"><span>🔍</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search in ${shop.name}`} /></div>
-      <div className="products">
-        {products.length === 0 && <div className="empty">No products yet</div>}
-        {products.map((p) => {
-          const n = qty(p.id)
-          return (
-            <div key={p.id} className={'product' + (p.inStock ? '' : ' oos')}>
-              <div className="p-emoji">{p.emoji || '📦'}</div>
-              <div className="p-info">
-                <b>{p.name}</b>
-                <small>{p.unit}</small>
-                <div>
-                  <span className="price">{money(p.price)}</span>
-                  {p.mrp > p.price && <><s>{money(p.mrp)}</s><span className="off">{Math.round((1 - p.price / p.mrp) * 100)}% off</span></>}
+      {types.length > 1 && (
+        <div className="chips scroll">
+          <button className={!type ? 'active' : ''} onClick={() => setType('')}>All ({all.length})</button>
+          {types.map((t) => <button key={t} className={type === t ? 'active' : ''} onClick={() => setType(t)}>{t}</button>)}
+        </div>
+      )}
+      {products.length === 0 && <div className="empty">No products found</div>}
+      {groups.map(([g, list]) => (
+        <section key={g || 'all'}>
+          {g && <h3 className="section-title">{g} <small className="muted">({list.length})</small></h3>}
+          <div className="products">
+            {list.map((p) => (
+              <div key={p.id} className={'product tap' + (p.inStock ? '' : ' oos')} onClick={() => setDetail(p)}>
+                {p.images[0] ? <img className="p-img" src={p.images[0]} alt="" loading="lazy" /> : <div className="p-emoji">{p.emoji || '📦'}</div>}
+                <div className="p-info">
+                  <b>{p.name}</b>
+                  <small>{p.unit}</small>
+                  {p.offer && <span className="offer-tag">🏷️ {p.offer}</span>}
+                  <div>
+                    <span className="price">{money(p.price)}</span>
+                    {p.mrp > p.price && <><s>{money(p.mrp)}</s><span className="off">{Math.round((1 - p.price / p.mrp) * 100)}% off</span></>}
+                  </div>
                 </div>
+                {addControls(p)}
               </div>
-              {!p.inStock ? <span className="oos-tag">Out of stock</span>
-                : !shop.open ? null
-                  : n === 0 ? <button className="btn add" onClick={() => addToCart(p, 1)}>ADD</button>
-                    : (
-                      <div className="qty">
-                        <button onClick={() => addToCart(p, -1)}>−</button><b>{n}</b><button onClick={() => addToCart(p, 1)}>+</button>
-                      </div>
-                    )}
-            </div>
-          )
-        })}
-      </div>
+            ))}
+          </div>
+        </section>
+      ))}
+      {detail && <ProductDetail p={db.products.find((x) => x.id === detail.id) || detail} controls={addControls} onClose={() => setDetail(null)} />}
       <ShopReviews shopId={shopId} count={shop.ratingCount} />
       {cart?.shopId === shopId && <div style={{ height: 60 }} />}
     </>
+  )
+}
+
+function ProductDetail({ p, controls, onClose }) {
+  const [i, setI] = useState(0)
+  const imgs = p.images || []
+  return (
+    <div className="sheet-backdrop" onClick={onClose}>
+      <div className="sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={p.name}>
+        <button className="sheet-close" onClick={onClose} aria-label="Close">✕</button>
+        {imgs.length ? (
+          <>
+            <img className="sheet-img" src={imgs[Math.min(i, imgs.length - 1)]} alt={p.name} />
+            {imgs.length > 1 && (
+              <div className="sheet-thumbs">
+                {imgs.map((u, k) => <img key={u} src={u} alt="" className={k === i ? 'on' : ''} onClick={() => setI(k)} />)}
+              </div>
+            )}
+          </>
+        ) : <div className="sheet-emoji">{p.emoji || '📦'}</div>}
+        <h3>{p.name}</h3>
+        <p className="muted">{p.unit}{p.type ? ` · ${p.type}` : ''}</p>
+        {p.offer && <span className="offer-tag">🏷️ {p.offer}</span>}
+        <div className="row">
+          <div>
+            <span className="price big">{money(p.price)}</span>
+            {p.mrp > p.price && <><s>{money(p.mrp)}</s><span className="off">{Math.round((1 - p.price / p.mrp) * 100)}% off</span></>}
+          </div>
+          {controls(p)}
+        </div>
+        {p.description && <p className="sheet-desc">{p.description}</p>}
+        {p.stockQty != null && p.stockQty <= 5 && p.inStock && <small className="error-text">Only {p.stockQty} left</small>}
+      </div>
+    </div>
   )
 }
 
@@ -256,6 +320,7 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
       const p = await payOnline(res.id)
       if (p.error) alert(p.error)
     }
+    sfx.success()
     onPlaced(res.id)
   }
 
@@ -523,6 +588,17 @@ function ShopReviews({ shopId, count }) {
   )
 }
 
+export function FxSettings() {
+  const [p, setP] = useState(fxPrefs())
+  const flip = (k) => { setFxPref(k, !p[k]); setP(fxPrefs()) }
+  return (
+    <div className="card fx-settings">
+      <label className="switch-toggle"><input type="checkbox" checked={p.sound} onChange={() => flip('sound')} /><span className="slider" /> 🔊 Tap sounds</label>
+      <label className="switch-toggle"><input type="checkbox" checked={p.motion} onChange={() => flip('motion')} /><span className="slider" /> ✨ Animations</label>
+    </div>
+  )
+}
+
 function ChangePassword() {
   const [open, setOpen] = useState(false)
   const [pw, setPw] = useState('')
@@ -566,6 +642,7 @@ function Profile({ user }) {
           {saved ? 'Saved ✓' : 'Save'}
         </button>
       </div>
+      <FxSettings />
       <ChangePassword />
       <DeleteMyAccount phone={user.phone} />
       <LegalLinks />

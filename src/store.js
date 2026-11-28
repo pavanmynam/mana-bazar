@@ -41,13 +41,19 @@ function mapShop(r) {
     kycStatus: r.kyc_status, rating: r.rating_count ? Number(r.rating_avg).toFixed(1) : 'New',
     ratingCount: r.rating_count, eta: r.eta_minutes, minOrder: num(r.min_order), phone: r.phone,
     upiId: r.upi_id, lat: r.lat, lng: r.lng, isSample: r.is_sample,
+    description: r.description || '', photoUrl: r.photo_url || '', kycDocs: r.kyc_docs || [],
+    checklist: r.admin_checklist || {}, phoneVerified: !!r.phone_verified,
+    legalName: r.owner_legal_name || '', gst: r.gst_number || '', fssai: r.fssai_number || '',
+    drugLicense: r.drug_license_number || '', tradeLicense: r.trade_license_number || '',
+    kycNote: r.kyc_note || '', notice: r.notice || '', createdAt: Date.parse(r.created_at),
   }
 }
 function mapProduct(r) {
   return {
     id: r.id, shopId: r.shop_id, name: r.name, description: r.description, price: num(r.price),
     mrp: num(r.mrp ?? r.price), unit: r.unit, emoji: r.emoji, imageUrl: r.image_url, inStock: r.in_stock,
-    barcode: r.barcode || '',
+    barcode: r.barcode || '', images: r.images?.length ? r.images : (r.image_url ? [r.image_url] : []),
+    type: r.product_type || '', stockQty: r.stock_qty, offer: r.offer_text || '',
   }
 }
 function mapOrder(r) {
@@ -100,6 +106,19 @@ function report(error) {
 
 // Load everything this user is allowed to see (RLS filters it on the server).
 let loading = null
+// Supabase returns at most 1000 rows per request, so read products page by page.
+async function fetchAllProducts() {
+  const PAGE = 1000
+  const all = []
+  for (let from = 0; from < 50000; from += PAGE) {
+    const { data, error } = await supabase.from('products').select('*').order('id').range(from, from + PAGE - 1)
+    if (error) return { data: all, error }
+    all.push(...data)
+    if (data.length < PAGE) break
+  }
+  return { data: all, error: null }
+}
+
 async function refresh() {
   if (loading) return loading
   loading = (async () => {
@@ -108,7 +127,7 @@ async function refresh() {
       supabase.from('categories').select('*').eq('active', true).order('sort'),
       supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
       supabase.from('shops').select('*').order('created_at'),
-      supabase.from('products').select('*').order('created_at'),
+      fetchAllProducts(),
       signedIn ? supabase.from('orders').select('*').order('created_at', { ascending: false }) : { data: [] },
       signedIn ? supabase.from('profiles').select('*') : { data: [] },
       supabase.rpc('admin_exists'),
@@ -269,7 +288,10 @@ export async function updateUser(id, patch) {
 const SHOP_FIELDS = {
   name: 'name', address: 'address', phone: 'phone', icon: 'icon', category: 'category_id', open: 'is_open',
   eta: 'eta_minutes', upiId: 'upi_id', status: 'status', kycStatus: 'kyc_status', closedMessage: 'closed_message',
-  minOrder: 'min_order', lat: 'lat', lng: 'lng',
+  minOrder: 'min_order', lat: 'lat', lng: 'lng', description: 'description', photoUrl: 'photo_url',
+  kycDocs: 'kyc_docs', legalName: 'owner_legal_name', gst: 'gst_number', fssai: 'fssai_number',
+  drugLicense: 'drug_license_number', tradeLicense: 'trade_license_number', kycNote: 'kyc_note',
+  checklist: 'admin_checklist', phoneVerified: 'phone_verified', notice: 'notice',
 }
 export async function updateShop(id, patch) {
   const row = {}
@@ -289,15 +311,84 @@ export async function saveProduct(p) {
   if ('emoji' in p) row.emoji = p.emoji || '📦'
   if ('inStock' in p) row.in_stock = p.inStock
   if ('barcode' in p) row.barcode = (p.barcode || '').trim() || null
-  let error
+  if ('description' in p) row.description = (p.description || '').trim() || null
+  if ('type' in p) row.product_type = (p.type || '').trim() || null
+  if ('offer' in p) row.offer_text = (p.offer || '').trim() || null
+  if ('stockQty' in p) row.stock_qty = p.stockQty === '' || p.stockQty == null ? null : Math.max(0, parseInt(p.stockQty, 10) || 0)
+  if ('images' in p) { row.images = (p.images || []).slice(0, 5); row.image_url = row.images[0] || null }
+  let error, id = p.id
   if (p.id) {
     row.updated_at = new Date().toISOString()
     ;({ error } = await supabase.from('products').update(row).eq('id', p.id))
   } else {
-    ;({ error } = await supabase.from('products').insert({ ...row, shop_id: p.shopId }))
+    let data
+    ;({ data, error } = await supabase.from('products').insert({ ...row, shop_id: p.shopId }).select('id').single())
+    id = data?.id
+  }
+  if (!error && id && 'cost' in p) {
+    const cost = p.cost === '' || p.cost == null ? null : Number(p.cost)
+    const r = cost == null
+      ? await supabase.from('product_costs').delete().eq('product_id', id)
+      : await supabase.from('product_costs').upsert({ product_id: id, cost_price: cost, updated_at: new Date().toISOString() })
+    if (r.error) console.error(r.error)
   }
   report(error)
   await refresh()
+  return error ? { error: fail(error) } : { ok: true, id }
+}
+
+// Owner-only buying cost for a shop's products: { [productId]: cost }
+export async function fetchCosts(productIds) {
+  if (!productIds.length) return {}
+  const out = {}
+  for (let i = 0; i < productIds.length; i += 200) {
+    const { data } = await supabase.from('product_costs').select('product_id, cost_price').in('product_id', productIds.slice(i, i + 200))
+    for (const r of data || []) out[r.product_id] = Number(r.cost_price)
+  }
+  return out
+}
+
+// ---------- photos & documents ----------
+// Shrinks phone photos (often 4–8 MB) to ~1200px JPEG before upload.
+async function shrinkImage(file, max = 1200, quality = 0.82) {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') return file
+  try {
+    const bmp = await createImageBitmap(file)
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height))
+    const c = document.createElement('canvas')
+    c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale)
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height)
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', quality))
+    return blob || file
+  } catch { return file }
+}
+const randomName = (ext) => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+
+// Public photo (shop photo, product photos). Returns { url } or { error }.
+export async function uploadPhoto(file) {
+  if (!session.userId) return { error: 'Please login again' }
+  if (file.size > 15 * 1024 * 1024) return { error: 'Photo is too big (max 15 MB)' }
+  const body = await shrinkImage(file)
+  const path = `${session.userId}/${randomName('jpg')}`
+  const { error } = await supabase.storage.from('product-images').upload(path, body, { contentType: 'image/jpeg', upsert: false })
+  if (error) return { error: fail(error) }
+  return { url: supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl }
+}
+
+// Private KYC document (only the owner and admin can open it).
+export async function uploadKycDoc(file, type) {
+  if (!session.userId) return { error: 'Please login again' }
+  if (file.size > 10 * 1024 * 1024) return { error: 'File is too big (max 10 MB)' }
+  const isPdf = file.type === 'application/pdf'
+  const body = isPdf ? file : await shrinkImage(file, 1800, 0.85)
+  const path = `${session.userId}/${randomName(isPdf ? 'pdf' : 'jpg')}`
+  const { error } = await supabase.storage.from('kyc-docs').upload(path, body, { contentType: isPdf ? 'application/pdf' : 'image/jpeg' })
+  if (error) return { error: fail(error) }
+  return { doc: { type, path, name: file.name, uploadedAt: new Date().toISOString() } }
+}
+export async function kycDocUrl(path) {
+  const { data, error } = await supabase.storage.from('kyc-docs').createSignedUrl(path, 600)
+  return error ? null : data.signedUrl
 }
 export async function deleteProduct(id) {
   const { error } = await supabase.from('products').delete().eq('id', id)
