@@ -3,6 +3,7 @@ import Auth, { roleFromPath, ROLE_PATHS } from './pages/Auth'
 import Customer from './pages/Customer'
 import Owner from './pages/Owner'
 import Admin from './pages/Admin'
+import Delivery from './pages/Delivery'
 import Legal, { legalSlugFromPath } from './pages/Legal'
 
 export default function App() {
@@ -32,7 +33,7 @@ function MainApp() {
           <img className="logo-img" src="/logo.png" alt="" width="38" height="38" />
           <div>
             <b>Mee Bazar <span className="te">మీ బజార్</span></b>
-            <small>{user.role === 'admin' ? 'Admin Panel' : user.role === 'owner' ? 'Shop Partner' : 'మీ ఊరి షాపులు · ఇంటికే డెలివరీ'}</small>
+            <small>{user.role === 'admin' ? 'Admin Panel' : user.role === 'owner' ? 'Shop Partner' : user.role === 'delivery' ? 'Delivery Partner' : 'మీ ఊరి షాపులు · ఇంటికే డెలివరీ'}</small>
           </div>
         </div>
         <div className="topbar-right">
@@ -43,9 +44,7 @@ function MainApp() {
       {user.role === 'customer' && <Customer user={user} />}
       {user.role === 'owner' && <Owner user={user} />}
       {user.role === 'admin' && <Admin user={user} />}
-      {user.role === 'delivery' && (
-        <main className="page"><div className="card center"><div className="logo-big">🛵</div><h2>Delivery Partner app</h2><p>Coming soon. Admin will contact you once your account is approved.</p></div></main>
-      )}
+      {user.role === 'delivery' && <Delivery user={user} />}
     </div>
   )
 }
