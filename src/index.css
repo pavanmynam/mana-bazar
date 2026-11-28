@@ -338,6 +338,7 @@ html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation: none 
 .partner-cta { display: block; text-align: center; margin: 14px auto 0; max-width: 420px; padding: 12px; border-radius: 12px; background: #fff; color: var(--ink); text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 .partner-cta b { color: var(--brand); }
 .center-text { text-align: center; font-size: 13px; }
+.auth-hero.role-owner, .auth-hero.role-delivery, .auth-hero.role-admin { padding: 18px; border-radius: 18px; }
 .auth-hero.role-owner { background: linear-gradient(135deg, #1b5e20, #43a047); }
 .auth-hero.role-delivery { background: linear-gradient(135deg, #0d47a1, #1e88e5); }
 .auth-hero.role-admin { background: linear-gradient(135deg, #263238, #455a64); }
