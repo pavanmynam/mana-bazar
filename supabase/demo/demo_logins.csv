@@ -1,0 +1,241 @@
+department,shop,area,login_mobile,password
+grocery,Sri Lakshmi Kirana Store,Nagole,7000001001,Demo@1234
+grocery,Sri Venkateswara Kirana Store,Bandlaguda,7000001002,Demo@1234
+grocery,Sai Ram Kirana Store,LB Nagar,7000001003,Demo@1234
+grocery,Balaji Kirana Store,Uppal,7000001004,Demo@1234
+grocery,Durga Bhavani Kirana Store,Dilsukhnagar,7000001005,Demo@1234
+grocery,Annapurna Kirana Store,Kothapet,7000001006,Demo@1234
+grocery,Vijaya Kirana Store,Vanasthalipuram,7000001007,Demo@1234
+grocery,Raghavendra Kirana Store,Boduppal,7000001008,Demo@1234
+grocery,Siri Kirana Store,Ramanthapur,7000001009,Demo@1234
+grocery,Hanuman Kirana Store,Habsiguda,7000001010,Demo@1234
+supermarket,Sri Lakshmi Super Market,Nagole,7000002001,Demo@1234
+supermarket,Sri Venkateswara Super Market,Bandlaguda,7000002002,Demo@1234
+supermarket,Sai Ram Super Market,LB Nagar,7000002003,Demo@1234
+supermarket,Balaji Super Market,Uppal,7000002004,Demo@1234
+supermarket,Durga Bhavani Super Market,Dilsukhnagar,7000002005,Demo@1234
+supermarket,Annapurna Super Market,Kothapet,7000002006,Demo@1234
+supermarket,Vijaya Super Market,Vanasthalipuram,7000002007,Demo@1234
+supermarket,Raghavendra Super Market,Boduppal,7000002008,Demo@1234
+supermarket,Siri Super Market,Ramanthapur,7000002009,Demo@1234
+supermarket,Hanuman Super Market,Habsiguda,7000002010,Demo@1234
+clothing,Sri Lakshmi Fashions,Nagole,7000003001,Demo@1234
+clothing,Sri Venkateswara Fashions,Bandlaguda,7000003002,Demo@1234
+clothing,Sai Ram Fashions,LB Nagar,7000003003,Demo@1234
+clothing,Balaji Fashions,Uppal,7000003004,Demo@1234
+clothing,Durga Bhavani Fashions,Dilsukhnagar,7000003005,Demo@1234
+clothing,Annapurna Fashions,Kothapet,7000003006,Demo@1234
+clothing,Vijaya Fashions,Vanasthalipuram,7000003007,Demo@1234
+clothing,Raghavendra Fashions,Boduppal,7000003008,Demo@1234
+clothing,Siri Fashions,Ramanthapur,7000003009,Demo@1234
+clothing,Hanuman Fashions,Habsiguda,7000003010,Demo@1234
+footwear,Sri Lakshmi Footwear,Nagole,7000004001,Demo@1234
+footwear,Sri Venkateswara Footwear,Bandlaguda,7000004002,Demo@1234
+footwear,Sai Ram Footwear,LB Nagar,7000004003,Demo@1234
+footwear,Balaji Footwear,Uppal,7000004004,Demo@1234
+footwear,Durga Bhavani Footwear,Dilsukhnagar,7000004005,Demo@1234
+footwear,Annapurna Footwear,Kothapet,7000004006,Demo@1234
+footwear,Vijaya Footwear,Vanasthalipuram,7000004007,Demo@1234
+footwear,Raghavendra Footwear,Boduppal,7000004008,Demo@1234
+footwear,Siri Footwear,Ramanthapur,7000004009,Demo@1234
+footwear,Hanuman Footwear,Habsiguda,7000004010,Demo@1234
+electronics,Sri Lakshmi Electronics,Nagole,7000005001,Demo@1234
+electronics,Sri Venkateswara Electronics,Bandlaguda,7000005002,Demo@1234
+electronics,Sai Ram Electronics,LB Nagar,7000005003,Demo@1234
+electronics,Balaji Electronics,Uppal,7000005004,Demo@1234
+electronics,Durga Bhavani Electronics,Dilsukhnagar,7000005005,Demo@1234
+electronics,Annapurna Electronics,Kothapet,7000005006,Demo@1234
+electronics,Vijaya Electronics,Vanasthalipuram,7000005007,Demo@1234
+electronics,Raghavendra Electronics,Boduppal,7000005008,Demo@1234
+electronics,Siri Electronics,Ramanthapur,7000005009,Demo@1234
+electronics,Hanuman Electronics,Habsiguda,7000005010,Demo@1234
+mobile,Sri Lakshmi Mobiles,Nagole,7000006001,Demo@1234
+mobile,Sri Venkateswara Mobiles,Bandlaguda,7000006002,Demo@1234
+mobile,Sai Ram Mobiles,LB Nagar,7000006003,Demo@1234
+mobile,Balaji Mobiles,Uppal,7000006004,Demo@1234
+mobile,Durga Bhavani Mobiles,Dilsukhnagar,7000006005,Demo@1234
+mobile,Annapurna Mobiles,Kothapet,7000006006,Demo@1234
+mobile,Vijaya Mobiles,Vanasthalipuram,7000006007,Demo@1234
+mobile,Raghavendra Mobiles,Boduppal,7000006008,Demo@1234
+mobile,Siri Mobiles,Ramanthapur,7000006009,Demo@1234
+mobile,Hanuman Mobiles,Habsiguda,7000006010,Demo@1234
+restaurant,Sri Lakshmi Restaurant,Nagole,7000007001,Demo@1234
+restaurant,Sri Venkateswara Restaurant,Bandlaguda,7000007002,Demo@1234
+restaurant,Sai Ram Restaurant,LB Nagar,7000007003,Demo@1234
+restaurant,Balaji Restaurant,Uppal,7000007004,Demo@1234
+restaurant,Durga Bhavani Restaurant,Dilsukhnagar,7000007005,Demo@1234
+restaurant,Annapurna Restaurant,Kothapet,7000007006,Demo@1234
+restaurant,Vijaya Restaurant,Vanasthalipuram,7000007007,Demo@1234
+restaurant,Raghavendra Restaurant,Boduppal,7000007008,Demo@1234
+restaurant,Siri Restaurant,Ramanthapur,7000007009,Demo@1234
+restaurant,Hanuman Restaurant,Habsiguda,7000007010,Demo@1234
+bakery,Sri Lakshmi Bakery,Nagole,7000008001,Demo@1234
+bakery,Sri Venkateswara Bakery,Bandlaguda,7000008002,Demo@1234
+bakery,Sai Ram Bakery,LB Nagar,7000008003,Demo@1234
+bakery,Balaji Bakery,Uppal,7000008004,Demo@1234
+bakery,Durga Bhavani Bakery,Dilsukhnagar,7000008005,Demo@1234
+bakery,Annapurna Bakery,Kothapet,7000008006,Demo@1234
+bakery,Vijaya Bakery,Vanasthalipuram,7000008007,Demo@1234
+bakery,Raghavendra Bakery,Boduppal,7000008008,Demo@1234
+bakery,Siri Bakery,Ramanthapur,7000008009,Demo@1234
+bakery,Hanuman Bakery,Habsiguda,7000008010,Demo@1234
+sweets,Sri Lakshmi Sweets,Nagole,7000009001,Demo@1234
+sweets,Sri Venkateswara Sweets,Bandlaguda,7000009002,Demo@1234
+sweets,Sai Ram Sweets,LB Nagar,7000009003,Demo@1234
+sweets,Balaji Sweets,Uppal,7000009004,Demo@1234
+sweets,Durga Bhavani Sweets,Dilsukhnagar,7000009005,Demo@1234
+sweets,Annapurna Sweets,Kothapet,7000009006,Demo@1234
+sweets,Vijaya Sweets,Vanasthalipuram,7000009007,Demo@1234
+sweets,Raghavendra Sweets,Boduppal,7000009008,Demo@1234
+sweets,Siri Sweets,Ramanthapur,7000009009,Demo@1234
+sweets,Hanuman Sweets,Habsiguda,7000009010,Demo@1234
+dairy,Sri Lakshmi Dairy & Milk Centre,Nagole,7000010001,Demo@1234
+dairy,Sri Venkateswara Dairy & Milk Centre,Bandlaguda,7000010002,Demo@1234
+dairy,Sai Ram Dairy & Milk Centre,LB Nagar,7000010003,Demo@1234
+dairy,Balaji Dairy & Milk Centre,Uppal,7000010004,Demo@1234
+dairy,Durga Bhavani Dairy & Milk Centre,Dilsukhnagar,7000010005,Demo@1234
+dairy,Annapurna Dairy & Milk Centre,Kothapet,7000010006,Demo@1234
+dairy,Vijaya Dairy & Milk Centre,Vanasthalipuram,7000010007,Demo@1234
+dairy,Raghavendra Dairy & Milk Centre,Boduppal,7000010008,Demo@1234
+dairy,Siri Dairy & Milk Centre,Ramanthapur,7000010009,Demo@1234
+dairy,Hanuman Dairy & Milk Centre,Habsiguda,7000010010,Demo@1234
+fruits,Sri Lakshmi Fruits & Vegetables,Nagole,7000011001,Demo@1234
+fruits,Sri Venkateswara Fruits & Vegetables,Bandlaguda,7000011002,Demo@1234
+fruits,Sai Ram Fruits & Vegetables,LB Nagar,7000011003,Demo@1234
+fruits,Balaji Fruits & Vegetables,Uppal,7000011004,Demo@1234
+fruits,Durga Bhavani Fruits & Vegetables,Dilsukhnagar,7000011005,Demo@1234
+fruits,Annapurna Fruits & Vegetables,Kothapet,7000011006,Demo@1234
+fruits,Vijaya Fruits & Vegetables,Vanasthalipuram,7000011007,Demo@1234
+fruits,Raghavendra Fruits & Vegetables,Boduppal,7000011008,Demo@1234
+fruits,Siri Fruits & Vegetables,Ramanthapur,7000011009,Demo@1234
+fruits,Hanuman Fruits & Vegetables,Habsiguda,7000011010,Demo@1234
+furniture,Sri Lakshmi Furniture,Nagole,7000012001,Demo@1234
+furniture,Sri Venkateswara Furniture,Bandlaguda,7000012002,Demo@1234
+furniture,Sai Ram Furniture,LB Nagar,7000012003,Demo@1234
+furniture,Balaji Furniture,Uppal,7000012004,Demo@1234
+furniture,Durga Bhavani Furniture,Dilsukhnagar,7000012005,Demo@1234
+furniture,Annapurna Furniture,Kothapet,7000012006,Demo@1234
+furniture,Vijaya Furniture,Vanasthalipuram,7000012007,Demo@1234
+furniture,Raghavendra Furniture,Boduppal,7000012008,Demo@1234
+furniture,Siri Furniture,Ramanthapur,7000012009,Demo@1234
+furniture,Hanuman Furniture,Habsiguda,7000012010,Demo@1234
+hardware,Sri Lakshmi Hardware,Nagole,7000013001,Demo@1234
+hardware,Sri Venkateswara Hardware,Bandlaguda,7000013002,Demo@1234
+hardware,Sai Ram Hardware,LB Nagar,7000013003,Demo@1234
+hardware,Balaji Hardware,Uppal,7000013004,Demo@1234
+hardware,Durga Bhavani Hardware,Dilsukhnagar,7000013005,Demo@1234
+hardware,Annapurna Hardware,Kothapet,7000013006,Demo@1234
+hardware,Vijaya Hardware,Vanasthalipuram,7000013007,Demo@1234
+hardware,Raghavendra Hardware,Boduppal,7000013008,Demo@1234
+hardware,Siri Hardware,Ramanthapur,7000013009,Demo@1234
+hardware,Hanuman Hardware,Habsiguda,7000013010,Demo@1234
+paints,Sri Lakshmi Paints,Nagole,7000014001,Demo@1234
+paints,Sri Venkateswara Paints,Bandlaguda,7000014002,Demo@1234
+paints,Sai Ram Paints,LB Nagar,7000014003,Demo@1234
+paints,Balaji Paints,Uppal,7000014004,Demo@1234
+paints,Durga Bhavani Paints,Dilsukhnagar,7000014005,Demo@1234
+paints,Annapurna Paints,Kothapet,7000014006,Demo@1234
+paints,Vijaya Paints,Vanasthalipuram,7000014007,Demo@1234
+paints,Raghavendra Paints,Boduppal,7000014008,Demo@1234
+paints,Siri Paints,Ramanthapur,7000014009,Demo@1234
+paints,Hanuman Paints,Habsiguda,7000014010,Demo@1234
+electrical,Sri Lakshmi Electricals,Nagole,7000015001,Demo@1234
+electrical,Sri Venkateswara Electricals,Bandlaguda,7000015002,Demo@1234
+electrical,Sai Ram Electricals,LB Nagar,7000015003,Demo@1234
+electrical,Balaji Electricals,Uppal,7000015004,Demo@1234
+electrical,Durga Bhavani Electricals,Dilsukhnagar,7000015005,Demo@1234
+electrical,Annapurna Electricals,Kothapet,7000015006,Demo@1234
+electrical,Vijaya Electricals,Vanasthalipuram,7000015007,Demo@1234
+electrical,Raghavendra Electricals,Boduppal,7000015008,Demo@1234
+electrical,Siri Electricals,Ramanthapur,7000015009,Demo@1234
+electrical,Hanuman Electricals,Habsiguda,7000015010,Demo@1234
+plumbing,Sri Lakshmi Plumbing & Sanitary,Nagole,7000016001,Demo@1234
+plumbing,Sri Venkateswara Plumbing & Sanitary,Bandlaguda,7000016002,Demo@1234
+plumbing,Sai Ram Plumbing & Sanitary,LB Nagar,7000016003,Demo@1234
+plumbing,Balaji Plumbing & Sanitary,Uppal,7000016004,Demo@1234
+plumbing,Durga Bhavani Plumbing & Sanitary,Dilsukhnagar,7000016005,Demo@1234
+plumbing,Annapurna Plumbing & Sanitary,Kothapet,7000016006,Demo@1234
+plumbing,Vijaya Plumbing & Sanitary,Vanasthalipuram,7000016007,Demo@1234
+plumbing,Raghavendra Plumbing & Sanitary,Boduppal,7000016008,Demo@1234
+plumbing,Siri Plumbing & Sanitary,Ramanthapur,7000016009,Demo@1234
+plumbing,Hanuman Plumbing & Sanitary,Habsiguda,7000016010,Demo@1234
+building,Sri Lakshmi Steel & Cement,Nagole,7000017001,Demo@1234
+building,Sri Venkateswara Steel & Cement,Bandlaguda,7000017002,Demo@1234
+building,Sai Ram Steel & Cement,LB Nagar,7000017003,Demo@1234
+building,Balaji Steel & Cement,Uppal,7000017004,Demo@1234
+building,Durga Bhavani Steel & Cement,Dilsukhnagar,7000017005,Demo@1234
+building,Annapurna Steel & Cement,Kothapet,7000017006,Demo@1234
+building,Vijaya Steel & Cement,Vanasthalipuram,7000017007,Demo@1234
+building,Raghavendra Steel & Cement,Boduppal,7000017008,Demo@1234
+building,Siri Steel & Cement,Ramanthapur,7000017009,Demo@1234
+building,Hanuman Steel & Cement,Habsiguda,7000017010,Demo@1234
+medical,Sri Lakshmi Medical & General Store,Nagole,7000018001,Demo@1234
+medical,Sri Venkateswara Medical & General Store,Bandlaguda,7000018002,Demo@1234
+medical,Sai Ram Medical & General Store,LB Nagar,7000018003,Demo@1234
+medical,Balaji Medical & General Store,Uppal,7000018004,Demo@1234
+medical,Durga Bhavani Medical & General Store,Dilsukhnagar,7000018005,Demo@1234
+medical,Annapurna Medical & General Store,Kothapet,7000018006,Demo@1234
+medical,Vijaya Medical & General Store,Vanasthalipuram,7000018007,Demo@1234
+medical,Raghavendra Medical & General Store,Boduppal,7000018008,Demo@1234
+medical,Siri Medical & General Store,Ramanthapur,7000018009,Demo@1234
+medical,Hanuman Medical & General Store,Habsiguda,7000018010,Demo@1234
+diagnostics,Sri Lakshmi Diagnostics,Nagole,7000019001,Demo@1234
+diagnostics,Sri Venkateswara Diagnostics,Bandlaguda,7000019002,Demo@1234
+diagnostics,Sai Ram Diagnostics,LB Nagar,7000019003,Demo@1234
+diagnostics,Balaji Diagnostics,Uppal,7000019004,Demo@1234
+diagnostics,Durga Bhavani Diagnostics,Dilsukhnagar,7000019005,Demo@1234
+diagnostics,Annapurna Diagnostics,Kothapet,7000019006,Demo@1234
+diagnostics,Vijaya Diagnostics,Vanasthalipuram,7000019007,Demo@1234
+diagnostics,Raghavendra Diagnostics,Boduppal,7000019008,Demo@1234
+diagnostics,Siri Diagnostics,Ramanthapur,7000019009,Demo@1234
+diagnostics,Hanuman Diagnostics,Habsiguda,7000019010,Demo@1234
+clinic,Sri Lakshmi Clinic,Nagole,7000020001,Demo@1234
+clinic,Sri Venkateswara Clinic,Bandlaguda,7000020002,Demo@1234
+clinic,Sai Ram Clinic,LB Nagar,7000020003,Demo@1234
+clinic,Balaji Clinic,Uppal,7000020004,Demo@1234
+clinic,Durga Bhavani Clinic,Dilsukhnagar,7000020005,Demo@1234
+clinic,Annapurna Clinic,Kothapet,7000020006,Demo@1234
+clinic,Vijaya Clinic,Vanasthalipuram,7000020007,Demo@1234
+clinic,Raghavendra Clinic,Boduppal,7000020008,Demo@1234
+clinic,Siri Clinic,Ramanthapur,7000020009,Demo@1234
+clinic,Hanuman Clinic,Habsiguda,7000020010,Demo@1234
+stationery,Sri Lakshmi Stationery,Nagole,7000021001,Demo@1234
+stationery,Sri Venkateswara Stationery,Bandlaguda,7000021002,Demo@1234
+stationery,Sai Ram Stationery,LB Nagar,7000021003,Demo@1234
+stationery,Balaji Stationery,Uppal,7000021004,Demo@1234
+stationery,Durga Bhavani Stationery,Dilsukhnagar,7000021005,Demo@1234
+stationery,Annapurna Stationery,Kothapet,7000021006,Demo@1234
+stationery,Vijaya Stationery,Vanasthalipuram,7000021007,Demo@1234
+stationery,Raghavendra Stationery,Boduppal,7000021008,Demo@1234
+stationery,Siri Stationery,Ramanthapur,7000021009,Demo@1234
+stationery,Hanuman Stationery,Habsiguda,7000021010,Demo@1234
+books,Sri Lakshmi Book House,Nagole,7000022001,Demo@1234
+books,Sri Venkateswara Book House,Bandlaguda,7000022002,Demo@1234
+books,Sai Ram Book House,LB Nagar,7000022003,Demo@1234
+books,Balaji Book House,Uppal,7000022004,Demo@1234
+books,Durga Bhavani Book House,Dilsukhnagar,7000022005,Demo@1234
+books,Annapurna Book House,Kothapet,7000022006,Demo@1234
+books,Vijaya Book House,Vanasthalipuram,7000022007,Demo@1234
+books,Raghavendra Book House,Boduppal,7000022008,Demo@1234
+books,Siri Book House,Ramanthapur,7000022009,Demo@1234
+books,Hanuman Book House,Habsiguda,7000022010,Demo@1234
+laundry,Sri Lakshmi Laundry & Dry Cleaners,Nagole,7000023001,Demo@1234
+laundry,Sri Venkateswara Laundry & Dry Cleaners,Bandlaguda,7000023002,Demo@1234
+laundry,Sai Ram Laundry & Dry Cleaners,LB Nagar,7000023003,Demo@1234
+laundry,Balaji Laundry & Dry Cleaners,Uppal,7000023004,Demo@1234
+laundry,Durga Bhavani Laundry & Dry Cleaners,Dilsukhnagar,7000023005,Demo@1234
+laundry,Annapurna Laundry & Dry Cleaners,Kothapet,7000023006,Demo@1234
+laundry,Vijaya Laundry & Dry Cleaners,Vanasthalipuram,7000023007,Demo@1234
+laundry,Raghavendra Laundry & Dry Cleaners,Boduppal,7000023008,Demo@1234
+laundry,Siri Laundry & Dry Cleaners,Ramanthapur,7000023009,Demo@1234
+laundry,Hanuman Laundry & Dry Cleaners,Habsiguda,7000023010,Demo@1234
+salon,Sri Lakshmi Unisex Salon,Nagole,7000024001,Demo@1234
+salon,Sri Venkateswara Unisex Salon,Bandlaguda,7000024002,Demo@1234
+salon,Sai Ram Unisex Salon,LB Nagar,7000024003,Demo@1234
+salon,Balaji Unisex Salon,Uppal,7000024004,Demo@1234
+salon,Durga Bhavani Unisex Salon,Dilsukhnagar,7000024005,Demo@1234
+salon,Annapurna Unisex Salon,Kothapet,7000024006,Demo@1234
+salon,Vijaya Unisex Salon,Vanasthalipuram,7000024007,Demo@1234
+salon,Raghavendra Unisex Salon,Boduppal,7000024008,Demo@1234
+salon,Siri Unisex Salon,Ramanthapur,7000024009,Demo@1234
+salon,Hanuman Unisex Salon,Habsiguda,7000024010,Demo@1234

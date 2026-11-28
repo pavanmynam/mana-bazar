@@ -861,3 +861,68 @@ begin
 end $$;
 revoke all on function public.admin_set_password(uuid, text) from public, anon;
 grant execute on function public.admin_set_password(uuid, text) to authenticated;
+-- ---------------------------------------------------------------------
+-- 18. SHOP PROFILE, KYC DOCUMENTS, ADMIN CHECKLIST, PRODUCT PHOTOS
+-- ---------------------------------------------------------------------
+alter table public.shops add column if not exists description text;
+alter table public.shops add column if not exists photo_url text;           -- public 'product-images' bucket
+alter table public.shops add column if not exists kyc_docs jsonb not null default '[]'::jsonb;  -- [{type,path,name,uploaded_at}]
+alter table public.shops add column if not exists admin_checklist jsonb not null default '{}'::jsonb; -- {photo:true, docs:true, phone:true, details:true}
+alter table public.shops add column if not exists phone_verified boolean not null default false;
+
+alter table public.products add column if not exists images text[] not null default '{}';
+alter table public.products add column if not exists product_type text;      -- sub-category, e.g. 'Rice & Atta'
+
+create index if not exists products_type_idx on public.products (shop_id, product_type);
+
+-- Owners cannot tick the admin checklist or mark their own phone verified.
+create or replace function public.protect_shop_fields() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_trusted() then
+    new.status      := old.status;
+    new.kyc_note    := old.kyc_note;
+    new.rating_avg  := old.rating_avg;
+    new.rating_count:= old.rating_count;
+    new.is_sample   := old.is_sample;
+    new.owner_id    := old.owner_id;
+    new.admin_checklist := old.admin_checklist;
+    new.phone_verified  := old.phone_verified;
+    if new.kyc_status not in ('not_submitted','submitted') then
+      new.kyc_status := old.kyc_status;
+    end if;
+  end if;
+  return new;
+end $$;
+
+create or replace function public.new_shop_defaults() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_trusted() then
+    new.status := 'pending';
+    new.is_sample := false;
+    new.owner_id := auth.uid();
+    new.admin_checklist := '{}'::jsonb;
+    new.phone_verified := false;
+    if new.kyc_status not in ('not_submitted','submitted') then
+      new.kyc_status := 'not_submitted';
+    end if;
+  end if;
+  return new;
+end $$;
+
+-- Owner's buying cost is private (customers can read products, so it lives apart).
+create table if not exists public.product_costs (
+  product_id uuid primary key references public.products(id) on delete cascade,
+  cost_price numeric(10,2) not null check (cost_price >= 0),
+  updated_at timestamptz not null default now()
+);
+alter table public.product_costs enable row level security;
+drop policy if exists product_costs_owner on public.product_costs;
+create policy product_costs_owner on public.product_costs for all
+  using (public.is_admin() or exists (select 1 from public.products p join public.shops s on s.id = p.shop_id
+                                      where p.id = product_costs.product_id and s.owner_id = auth.uid()))
+  with check (public.is_admin() or exists (select 1 from public.products p join public.shops s on s.id = p.shop_id
+                                      where p.id = product_costs.product_id and s.owner_id = auth.uid()));
+grant select, insert, update, delete on public.product_costs to authenticated;
+revoke all on public.product_costs from anon;

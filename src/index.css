@@ -266,3 +266,68 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: t
 .stars button:disabled { cursor: default; }
 .stars button.on { color: #ffb300; }
 .review p { margin: 6px 0 0; }
+
+/* ---------- photos, shop profile, admin review ---------- */
+.shop-img img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.p-img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; flex-shrink: 0; background: var(--bg); }
+.product.tap { cursor: pointer; }
+.shop-cover { width: 100%; max-height: 220px; object-fit: cover; border-radius: 14px; margin-bottom: 10px; display: block; }
+.shop-about { background: #fff; border-radius: 12px; padding: 10px 12px; margin: 10px 0; font-size: 14px; line-height: 1.5; }
+.chips.scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.chips.scroll button { white-space: nowrap; }
+.photo-pick { display: grid; place-items: center; width: 110px; height: 110px; border: 2px dashed var(--line); border-radius: 12px; cursor: pointer; overflow: hidden; position: relative; background: var(--bg); font-size: 13px; text-align: center; }
+.photo-pick.big { width: 100%; height: 180px; }
+.photo-pick img { width: 100%; height: 100%; object-fit: cover; }
+.photo-busy { position: absolute; inset: auto 0 0 0; background: rgba(0,0,0,.6); color: #fff; font-size: 12px; padding: 4px; }
+.multi-photos { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+.mp-item { position: relative; width: 76px; height: 76px; }
+.mp-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; cursor: pointer; }
+.mp-item button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: #c62828; color: #fff; border: 0; font-size: 11px; cursor: pointer; }
+.mp-cover { position: absolute; left: 4px; bottom: 4px; background: rgba(0,0,0,.65); color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 6px; }
+.mp-add { width: 76px; height: 76px; border: 2px dashed var(--line); border-radius: 10px; display: grid; place-items: center; cursor: pointer; font-size: 22px; background: var(--bg); }
+.mp-add small { display: block; font-size: 11px; color: #777; }
+.doc-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg); padding: 6px 10px; border-radius: 8px; margin: 4px 0; font-size: 14px; }
+.doc-add { display: flex; gap: 8px; margin-top: 6px; }
+.doc-add select { flex: 1; margin: 0; }
+.review { border: 2px solid var(--brand); margin-bottom: 16px; }
+.review-grid { display: grid; grid-template-columns: minmax(160px, 260px) 1fr; gap: 14px; }
+@media (max-width: 640px) { .review-grid { grid-template-columns: 1fr; } }
+.review-photo { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px; display: block; }
+.review-photo.empty { display: grid; place-items: center; background: var(--bg); color: #888; }
+.review-info p { margin: 4px 0; font-size: 14px; }
+.check-row { display: flex; gap: 8px; align-items: center; font-weight: 500; margin: 6px 0; cursor: pointer; }
+.check-row input { width: 20px; height: 20px; margin: 0; }
+.fx-settings { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 14px; }
+
+/* product detail bottom sheet */
+.sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 900; display: flex; align-items: flex-end; justify-content: center; animation: fadeIn .2s ease; }
+.sheet { background: #fff; width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; border-radius: 22px 22px 0 0; padding: 16px 16px 28px; position: relative; animation: sheetUp .28s cubic-bezier(.2,.9,.3,1.2); }
+.sheet-close { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; z-index: 2; cursor: pointer; }
+.sheet-img { width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--bg); border-radius: 14px; }
+.sheet-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+.sheet-thumbs img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; opacity: .55; cursor: pointer; border: 2px solid transparent; }
+.sheet-thumbs img.on { opacity: 1; border-color: var(--brand); }
+.sheet-emoji { font-size: 90px; text-align: center; background: var(--bg); border-radius: 14px; padding: 20px; }
+.sheet h3 { margin: 12px 0 2px; }
+.sheet .price.big { font-size: 22px; }
+.sheet-desc { white-space: pre-line; line-height: 1.55; font-size: 14px; color: #333; }
+
+/* ---------- motion (turn off in Profile → Animations) ---------- */
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes riseIn { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes sheetUp { from { transform: translateY(100%) } to { transform: none } }
+@keyframes pop { 0% { transform: scale(1) } 40% { transform: scale(1.18) } 100% { transform: scale(1) } }
+@keyframes wiggle { 0%,100% { transform: rotate(0) } 25% { transform: rotate(-8deg) } 75% { transform: rotate(8deg) } }
+.btn, .chips button, .shop-card, .icon-btn, .qty button { transition: transform .12s ease, box-shadow .2s ease, background .15s; }
+.btn:active, .chips button:active, .icon-btn:active, .qty button:active { transform: scale(.94); }
+.shop-card:active, .product.tap:active { transform: scale(.985); }
+@media (hover: hover) { .shop-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.1); transform: translateY(-2px); } }
+.shop-card, .product, .card { animation: riseIn .35s ease both; }
+.shop-list > :nth-child(2) { animation-delay: .04s } .shop-list > :nth-child(3) { animation-delay: .08s }
+.shop-list > :nth-child(4) { animation-delay: .12s } .shop-list > :nth-child(5) { animation-delay: .16s }
+.shop-list > :nth-child(n+6) { animation-delay: .2s }
+.qty b { display: inline-block; animation: pop .25s ease; }
+.btn.add:hover { animation: wiggle .35s ease; }
+.btn.primary { background-size: 200% 100%; }
+html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation: none !important; transition: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
