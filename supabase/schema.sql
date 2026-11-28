@@ -926,3 +926,5 @@ create policy product_costs_owner on public.product_costs for all
                                       where p.id = product_costs.product_id and s.owner_id = auth.uid()));
 grant select, insert, update, delete on public.product_costs to authenticated;
 revoke all on public.product_costs from anon;
+
+alter table public.shops add column if not exists notice text;  -- owner's note to customers (offers, timings, holidays)

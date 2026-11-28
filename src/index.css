@@ -331,3 +331,5 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: t
 .btn.primary { background-size: 200% 100%; }
 html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation: none !important; transition: none !important; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+.offer-tag { display: inline-block; background: #fff3e0; color: #e65100; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; margin: 2px 0; }
+.shop-notice { background: linear-gradient(90deg, #fff3e0, #ffe0b2); color: #bf360c; font-weight: 700; padding: 10px 12px; border-radius: 12px; margin: 10px 0; animation: riseIn .35s ease both; }

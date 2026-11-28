@@ -129,7 +129,7 @@ function Orders({ db, orders }) {
   )
 }
 
-const empty = { name: '', price: '', mrp: '', unit: '', emoji: '📦', barcode: '', images: [], type: '', description: '', stockQty: '', cost: '' }
+const empty = { name: '', price: '', mrp: '', unit: '', emoji: '📦', barcode: '', images: [], type: '', description: '', stockQty: '', cost: '', offer: '' }
 
 // Suggested product types per department (owner can type their own too).
 export const PRODUCT_TYPES = {
@@ -216,6 +216,7 @@ function Products({ db, shop }) {
               <datalist id="ptypes">{(PRODUCT_TYPES[shop.category] || []).map((t) => <option key={t} value={t} />)}</datalist>
             </label>
             <label>Stock quantity<input type="number" min="0" value={edit.stockQty ?? ''} onChange={(e) => setEdit({ ...edit, stockQty: e.target.value })} placeholder="Leave empty if not counting" /></label>
+            <label>Offer (optional)<input value={edit.offer || ''} maxLength={40} onChange={(e) => setEdit({ ...edit, offer: e.target.value })} placeholder="e.g. Buy 2 get 1 free" /></label>
             <label>Your cost price ₹ <small className="muted">(only you see this)</small><input type="number" min="0" value={edit.cost ?? ''} onChange={(e) => setEdit({ ...edit, cost: e.target.value })} /></label>
             <label>Barcode (optional)
               <span style={{ display: 'flex', gap: 6 }}>
@@ -243,6 +244,7 @@ function Products({ db, shop }) {
             <div className="p-info">
               <b>{p.name}</b>
               <small>{p.unit}{p.type ? ` · ${p.type}` : ''}{p.stockQty != null ? ` · ${p.stockQty} left` : ''}{p.barcode ? ` · ▌▌ ${p.barcode}` : ''}</small>
+              {p.offer && <span className="offer-tag">🏷️ {p.offer}</span>}
               <div><span className="price">{money(p.price)}</span>{p.mrp > p.price && <s>{money(p.mrp)}</s>}</div>
             </div>
             <div className="p-actions">
@@ -296,7 +298,7 @@ function Dashboard({ db, orders }) {
 function ShopSettings({ shop }) {
   const [f, setF] = useState({
     name: shop.name, address: shop.address, phone: shop.phone, eta: shop.eta, icon: shop.icon, category: shop.category,
-    upiId: shop.upiId || '',
+    upiId: shop.upiId || '', notice: shop.notice || '',
   })
   const [saved, setSaved] = useState(false)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
@@ -315,6 +317,10 @@ function ShopSettings({ shop }) {
         <label>Phone<input value={f.phone} onChange={set('phone')} /></label>
         <label>Delivery time (min)<input type="number" value={f.eta} onChange={set('eta')} /></label>
       </div>
+      <label>
+        Note for customers (shown on top of your shop)
+        <input value={f.notice} onChange={set('notice')} maxLength={120} placeholder="e.g. 🎉 Sankranti offer: 10% off on all sweets · Closed on Sunday" />
+      </label>
       <label>
         Your UPI ID (for customer UPI payments)
         <input value={f.upiId} onChange={set('upiId')} placeholder="e.g. shopname@okaxis / 9876543210@ybl" />

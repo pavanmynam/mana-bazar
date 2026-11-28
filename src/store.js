@@ -45,7 +45,7 @@ function mapShop(r) {
     checklist: r.admin_checklist || {}, phoneVerified: !!r.phone_verified,
     legalName: r.owner_legal_name || '', gst: r.gst_number || '', fssai: r.fssai_number || '',
     drugLicense: r.drug_license_number || '', tradeLicense: r.trade_license_number || '',
-    kycNote: r.kyc_note || '', createdAt: Date.parse(r.created_at),
+    kycNote: r.kyc_note || '', notice: r.notice || '', createdAt: Date.parse(r.created_at),
   }
 }
 function mapProduct(r) {
@@ -53,7 +53,7 @@ function mapProduct(r) {
     id: r.id, shopId: r.shop_id, name: r.name, description: r.description, price: num(r.price),
     mrp: num(r.mrp ?? r.price), unit: r.unit, emoji: r.emoji, imageUrl: r.image_url, inStock: r.in_stock,
     barcode: r.barcode || '', images: r.images?.length ? r.images : (r.image_url ? [r.image_url] : []),
-    type: r.product_type || '', stockQty: r.stock_qty,
+    type: r.product_type || '', stockQty: r.stock_qty, offer: r.offer_text || '',
   }
 }
 function mapOrder(r) {
@@ -291,7 +291,7 @@ const SHOP_FIELDS = {
   minOrder: 'min_order', lat: 'lat', lng: 'lng', description: 'description', photoUrl: 'photo_url',
   kycDocs: 'kyc_docs', legalName: 'owner_legal_name', gst: 'gst_number', fssai: 'fssai_number',
   drugLicense: 'drug_license_number', tradeLicense: 'trade_license_number', kycNote: 'kyc_note',
-  checklist: 'admin_checklist', phoneVerified: 'phone_verified',
+  checklist: 'admin_checklist', phoneVerified: 'phone_verified', notice: 'notice',
 }
 export async function updateShop(id, patch) {
   const row = {}
@@ -313,6 +313,7 @@ export async function saveProduct(p) {
   if ('barcode' in p) row.barcode = (p.barcode || '').trim() || null
   if ('description' in p) row.description = (p.description || '').trim() || null
   if ('type' in p) row.product_type = (p.type || '').trim() || null
+  if ('offer' in p) row.offer_text = (p.offer || '').trim() || null
   if ('stockQty' in p) row.stock_qty = p.stockQty === '' || p.stockQty == null ? null : Math.max(0, parseInt(p.stockQty, 10) || 0)
   if ('images' in p) { row.images = (p.images || []).slice(0, 5); row.image_url = row.images[0] || null }
   let error, id = p.id

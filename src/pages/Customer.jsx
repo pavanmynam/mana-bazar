@@ -152,6 +152,7 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
                   <span>🕒 by {slotLabel(etaWindow.max)}</span>
                   {!s.open && <span className="closed-tag">Closed now</span>}
                 </div>
+                {s.notice && <small className="offer-tag">📢 {s.notice}</small>}
                 {hits.length > 0 && <small className="hits">Has: {hits.slice(0, 3).map((p) => p.name).join(', ')}</small>}
               </div>
             </button>
@@ -208,6 +209,7 @@ function ShopPage({ db, cart, shopId, back }) {
           </div>
         </div>
       </div>
+      {shop.notice && <div className="shop-notice">📢 {shop.notice}</div>}
       {shop.description && <p className="shop-about">{shop.description}</p>}
       {!shop.open && <div className="warn">{shop.closedMessage || "This shop is closed right now. You can browse but can't order."}</div>}
       <div className="search"><span>🔍</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search in ${shop.name}`} /></div>
@@ -228,6 +230,7 @@ function ShopPage({ db, cart, shopId, back }) {
                 <div className="p-info">
                   <b>{p.name}</b>
                   <small>{p.unit}</small>
+                  {p.offer && <span className="offer-tag">🏷️ {p.offer}</span>}
                   <div>
                     <span className="price">{money(p.price)}</span>
                     {p.mrp > p.price && <><s>{money(p.mrp)}</s><span className="off">{Math.round((1 - p.price / p.mrp) * 100)}% off</span></>}
@@ -265,6 +268,7 @@ function ProductDetail({ p, controls, onClose }) {
         ) : <div className="sheet-emoji">{p.emoji || '📦'}</div>}
         <h3>{p.name}</h3>
         <p className="muted">{p.unit}{p.type ? ` · ${p.type}` : ''}</p>
+        {p.offer && <span className="offer-tag">🏷️ {p.offer}</span>}
         <div className="row">
           <div>
             <span className="price big">{money(p.price)}</span>
