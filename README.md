@@ -1,4 +1,4 @@
-# 🛍️ Mana Bazar
+# 🛍️ Mee Bazar
 
 **All local shops in one app** – like Swiggy / Zomato, but for every kind of shop:
 Groceries, Medical, Bakery, Electrical, Stationery, Fruits & Vegetables, Restaurants and Dairy.

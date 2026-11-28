@@ -468,7 +468,7 @@ export async function payOnline(orderId) {
     return await new Promise((resolve) => {
       const rz = new window.Razorpay({
         key: o.keyId, order_id: o.razorpayOrderId, amount: o.amount, currency: 'INR',
-        name: 'Mana Bazar', description: `Order #${o.code}`,
+        name: 'Mee Bazar', description: `Order #${o.code}`,
         prefill: { name: o.name, contact: o.phone }, theme: { color: '#ff5722' },
         handler: async (resp) => {
           const v = await fetch(`${apiBase()}/api/razorpay-verify`, {
@@ -581,12 +581,12 @@ export function toWaNumber(phone) {
 }
 export function orderWhatsAppLink(order, shop) {
   const lines = [
-    `🛍️ New Mana Bazar order #${order.code || order.id}`,
+    `🛍️ New Mee Bazar order #${order.code || order.id}`,
     ...order.items.map((i) => `• ${i.name} x${i.qty}`),
     `Total: ${money(order.total)} (${order.payment})`,
     `Deliver to: ${order.address}`,
     order.note ? `Note: ${order.note}` : null,
-    `Open your Mana Bazar Owner app to accept.`,
+    `Open your Mee Bazar Owner app to accept.`,
   ].filter(Boolean)
   const text = encodeURIComponent(lines.join('\n'))
   return `https://wa.me/${toWaNumber(shop.phone)}?text=${text}`
@@ -599,7 +599,7 @@ export function orderWhatsAppLink(order, shop) {
 export function upiPayLink({ upiId, payeeName, amount, orderId }) {
   if (!upiId) return null
   const params = new URLSearchParams({
-    pa: upiId, pn: payeeName, am: String(amount), cu: 'INR', tn: `Mana Bazar order ${orderId}`,
+    pa: upiId, pn: payeeName, am: String(amount), cu: 'INR', tn: `Mee Bazar order ${orderId}`,
   })
   return `upi://pay?${params.toString()}`
 }

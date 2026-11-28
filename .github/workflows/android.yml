@@ -1,8 +1,8 @@
-# Builds the Mana Bazar Android app on GitHub's servers (nothing to install on your computer).
+# Builds the Mee Bazar Android app on GitHub's servers (nothing to install on your computer).
 # Runs on every push to main, or by hand: Actions tab -> "Android app" -> Run workflow.
 # Output (Actions run page -> Artifacts):
-#   mana-bazar-test-apk  : install directly on any Android phone for testing
-#   mana-bazar-playstore : signed .aab for Play Console (only when the 4 signing secrets are set)
+#   mee-bazar-test-apk  : install directly on any Android phone for testing
+#   mee-bazar-playstore : signed .aab for Play Console (only when the 4 signing secrets are set)
 name: Android app
 
 on:
@@ -66,7 +66,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: mana-bazar-test-apk
+          name: mee-bazar-test-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Build signed Play Store bundle (.aab)
@@ -88,5 +88,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: env.KEYSTORE_B64 != ''
         with:
-          name: mana-bazar-playstore
+          name: mee-bazar-playstore
           path: android/app/build/outputs/bundle/release/app-release.aab

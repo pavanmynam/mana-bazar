@@ -374,3 +374,6 @@ html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation: none 
 .timer-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff7043, #ff5722); border-radius: 8px; transition: width 1s linear; }
 .eta-chip { background: #fff3e0; color: #e64a19; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
 @keyframes blink { to { visibility: hidden; } }
+.pw-row { display: flex; gap: 6px; align-items: center; }
+.pw-row input { flex: 1; }
+.pw-eye { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 10px; cursor: pointer; font-size: 16px; }

@@ -21,10 +21,10 @@ export function roleFromPath(path = window.location.pathname) {
   return 'customer'
 }
 const HERO = {
-  customer: ['🛍️', 'Mana Bazar', 'మన ఊరి అన్ని షాపులు – ఒకే యాప్ లో'],
-  owner: ['🏪', 'Mana Bazar Partner', 'మీ షాపును ఉచితంగా ఆన్‌లైన్ లో పెట్టండి'],
-  delivery: ['🛵', 'Mana Bazar Delivery', 'డెలివరీ చేసి సంపాదించండి'],
-  admin: ['🛡️', 'Mana Bazar Admin', 'Staff only'],
+  customer: ['🛍️', 'Mee Bazar', 'మీ ఊరి అన్ని షాపులు – ఒకే యాప్ లో'],
+  owner: ['🏪', 'Mee Bazar Partner', 'మీ షాపును ఉచితంగా ఆన్‌లైన్ లో పెట్టండి'],
+  delivery: ['🛵', 'Mee Bazar Delivery', 'డెలివరీ చేసి సంపాదించండి'],
+  admin: ['🛡️', 'Mee Bazar Admin', 'Staff only'],
 }
 
 export default function Auth() {
@@ -32,7 +32,8 @@ export default function Auth() {
   const [busy, setBusy] = useState(false)
   const role = roleFromPath()
   const [mode, setMode] = useState('login')
-  const [f, setF] = useState({ phone: '', password: '', name: '', address: '', shopName: '', category: 'grocery' })
+  const [f, setF] = useState({ phone: '', password: '', password2: '', name: '', address: '', shopName: '', category: 'grocery' })
+  const [showPw, setShowPw] = useState(false)
   const [err, setErr] = useState('')
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const r = ROLES.find((x) => x.id === role)
@@ -46,8 +47,11 @@ export default function Auth() {
     let msg
     try {
       if (adminSetup) msg = await createFirstAdmin({ username: f.phone, password: f.password })
-      else if (mode === 'login') msg = await login(f.phone, f.password, role)
+      else if (mode === 'login') msg = await login(f.phone.trim(), f.password, role)
       else if (!f.name || !f.phone || !f.password) msg = 'Please fill all fields'
+      else if (!/^[6-9]\d{9}$/.test(f.phone.trim())) msg = 'Enter a valid 10-digit mobile number'
+      else if (f.password.length < 6) msg = 'Password must be at least 6 characters'
+      else if (f.password !== f.password2) msg = 'Passwords do not match — please type the same password twice'
       else if (role === 'customer') msg = await registerCustomer(f)
       else if (!f.shopName || !f.address) msg = 'Please fill shop name and address'
       else msg = await registerOwner(f)
@@ -85,7 +89,19 @@ export default function Auth() {
         <label>{role === 'admin' ? 'Username' : 'Mobile Number'}
           <input value={f.phone} onChange={set('phone')} placeholder={role === 'admin' ? 'choose a username' : '10-digit mobile'} inputMode={role === 'admin' ? 'text' : 'numeric'} />
         </label>
-        <label>Password<input type="password" value={f.password} onChange={set('password')} placeholder={adminSetup || mode === 'register' ? 'min 6 characters' : 'Password'} /></label>
+        <label>Password
+          <span className="pw-row">
+            <input type={showPw ? 'text' : 'password'} value={f.password} onChange={set('password')} placeholder={adminSetup || mode === 'register' ? 'min 6 characters' : 'Password'}
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'} />
+            <button type="button" className="pw-eye" onClick={() => setShowPw(!showPw)} aria-label={showPw ? 'Hide password' : 'Show password'}>{showPw ? '🙈' : '👁️'}</button>
+          </span>
+        </label>
+        {mode === 'register' && !adminSetup && (
+          <>
+            <label>Confirm Password<input type={showPw ? 'text' : 'password'} value={f.password2} onChange={set('password2')} placeholder="type the same password again" autoComplete="new-password" /></label>
+            <small className="muted">🔐 Remember this password — you will use your mobile number + this password to login. Forgot it later? Tap "Forgot password?" on the login screen.</small>
+          </>
+        )}
 
         {mode === 'register' && role === 'owner' && (
           <>
@@ -110,7 +126,7 @@ export default function Auth() {
 
         {mode === 'login' && role !== 'admin' && (
           <p className="switch" style={{ marginTop: 4 }}>
-            <a href={`https://wa.me/${BUSINESS.phoneRaw}?text=${encodeURIComponent(`Hi Mana Bazar, I forgot my password. Please reset it.\nAccount type: ${role === 'owner' ? 'Shop owner' : role === 'delivery' ? 'Delivery partner' : 'Customer'}\nRegistered mobile: ${f.phone || ''}`)}`}
+            <a href={`https://wa.me/${BUSINESS.phoneRaw}?text=${encodeURIComponent(`Hi Mee Bazar, I forgot my password. Please reset it.\nAccount type: ${role === 'owner' ? 'Shop owner' : role === 'delivery' ? 'Delivery partner' : 'Customer'}\nRegistered mobile: ${f.phone || ''}`)}`}
               target="_blank" rel="noreferrer">Forgot password?</a>
             <small className="muted" style={{ display: 'block' }}>We'll reset it on WhatsApp and send you a new password.</small>
           </p>
@@ -128,12 +144,12 @@ export default function Auth() {
             By registering you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
           </p>
         )}
-        {role === 'delivery' && <p className="muted center-text">Want to deliver with Mana Bazar? WhatsApp us at <a href={`https://wa.me/${BUSINESS.phoneRaw}`}>{BUSINESS.phone}</a> to join.</p>}
+        {role === 'delivery' && <p className="muted center-text">Want to deliver with Mee Bazar? WhatsApp us at <a href={`https://wa.me/${BUSINESS.phoneRaw}`}>{BUSINESS.phone}</a> to join.</p>}
       </form>
       {role === 'customer' && (
-        <a className="partner-cta" href="/partner">🏪 Own a shop? <b>Sell on Mana Bazar →</b></a>
+        <a className="partner-cta" href="/partner">🏪 Own a shop? <b>Sell on Mee Bazar →</b></a>
       )}
-      {role !== 'customer' && <a className="partner-cta" href="/">← Back to Mana Bazar shopping</a>}
+      {role !== 'customer' && <a className="partner-cta" href="/">← Back to Mee Bazar shopping</a>}
       <LegalLinks />
     </div>
   )

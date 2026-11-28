@@ -90,7 +90,7 @@ Keys pettina ventane cart lo **"💳 Pay online (UPI / Card / Netbanking)"** opt
 Keys lekapothe ee option kanipinchadu, COD / direct UPI matrame untayi.
 
 ### Money flow
-Customer online pay chesthe dabbu **Mana Bazar Razorpay account** ki vastundi
+Customer online pay chesthe dabbu **Mee Bazar Razorpay account** ki vastundi
 (Razorpay fee ~2% cut chesi T+2 days lo mee bank ki). Shops ki meeru settle cheyyali
 (weekly, commission minus chesi). Taruvata Razorpay **Route** tho automatic split cheyyochu.
 Cancel ayina paid orders ki refund: Razorpay Dashboard → Payments → payment open → **Refund**.

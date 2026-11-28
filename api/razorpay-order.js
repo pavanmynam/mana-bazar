@@ -1,5 +1,5 @@
 // POST { orderId } (logged-in customer) -> creates a Razorpay order for an
-// unpaid Mana Bazar order. The amount always comes from our database.
+// unpaid Mee Bazar order. The amount always comes from our database.
 import { currentUser, db, env, json, paymentsReady, preflight, razorpay } from './_lib/server.js'
 
 export function OPTIONS() { return preflight() }
