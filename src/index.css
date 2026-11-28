@@ -402,3 +402,16 @@ html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation: none 
 .rider-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #eff6ff; border-radius: 10px; padding: 8px 10px; margin: 6px 0; }
 .rider-chip small { width: 100%; color: #555; }
 .btn.block { width: 100%; }
+
+/* ---------- Zepto-style tracking hero ---------- */
+.track-hero { position: relative; margin: 0 -12px 12px; }
+.track-hero .live-map { margin: 0; }
+.track-hero .live-map-box { height: 58vh; max-height: 460px; min-height: 300px; border-radius: 0 0 18px 18px; }
+.track-hero .map-note { top: 10px; bottom: auto; }
+.track-banner { position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 500; background: #fff; border-radius: 14px; padding: 10px 14px; box-shadow: 0 6px 20px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 2px; }
+.track-banner b { font-size: 20px; color: #15803d; }
+.track-banner small { color: #555; }
+.track-banner.done b { color: #15803d; }
+.track-banner .live-dot { position: absolute; top: 10px; right: 12px; font-size: 11px; font-weight: 700; color: #dc2626; }
+.track-banner .live-dot::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #dc2626; margin-right: 4px; animation: livepulse 1.2s infinite; }
+@keyframes livepulse { 50% { opacity: .25 } }

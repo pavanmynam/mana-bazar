@@ -551,6 +551,16 @@ function orderEta(o, shop) {
   return { mins, due: o.createdAt + mins * 60000 }
 }
 const ACTIVE = ['placed', 'accepted', 'packed', 'picked_up', 'out_for_delivery']
+// Minutes left. Once the rider is moving and we have their live GPS, use the
+// real road-ish distance (straight line × 1.3) at ~18 km/h city speed + 2 min
+// to hand over; before that, use the shop's prep time + travel estimate.
+function minsLeft(o, shop, rider, now) {
+  if (rider && o.lat != null) {
+    const d = distanceKm(rider.lat, rider.lng, o.lat, o.lng)
+    if (d != null) return Math.max(1, Math.round((d * 1.3 / 18) * 60 + 2))
+  }
+  return Math.max(0, Math.round((orderEta(o, shop).due - now) / 60000))
+}
 const STEP_TEXT = {
   placed: 'Waiting for the shop to accept…', accepted: 'Shop accepted — packing your items', packed: 'Packed — waiting for pickup',
   picked_up: 'Picked up — on the way', out_for_delivery: 'Out for delivery — almost there!',
@@ -605,6 +615,19 @@ function TrackOrder({ db, id, back }) {
   return (
     <>
       <button className="back" onClick={back}>← Back</button>
+      {ACTIVE.concat('delivered').includes(o.status) && (
+        <div className="track-hero">
+          <LiveMap shop={shop} home={{ lat: o.lat, lng: o.lng }} status={o.status}
+            progress={(now - o.createdAt) / (orderEta(o, shop).mins * 60000)} rider={rider} />
+          <div className={'track-banner' + (o.status === 'delivered' ? ' done' : '')}>
+            {o.status === 'delivered' ? <b>🎉 Delivered</b> : (() => {
+              const m = minsLeft(o, shop, rider, now)
+              return <><small>{STEP_TEXT[o.status]}</small><b>{m > 0 ? `Arriving in ${m} min${m > 1 ? 's' : ''}` : 'Arriving any moment'}</b></>
+            })()}
+            {rider && o.status !== 'delivered' && <span className="live-dot">LIVE</span>}
+          </div>
+        </div>
+      )}
       <div className="card">
         <div className="row"><h2>Order #{o.code}</h2><StatusBadge s={o.status} /></div>
         <p className="muted">{shop?.icon} {shop?.name} · 📞 {shop?.phone}</p>
@@ -615,10 +638,6 @@ function TrackOrder({ db, id, back }) {
             {riderUser.phone && <a className="btn sm" href={`tel:${riderUser.phone}`}>📞 Call</a>}
             {riding && <small>{rider ? '📍 Live location on map' : 'Live location will appear shortly'}</small>}
           </div>
-        )}
-        {ACTIVE.concat('delivered').includes(o.status) && (
-          <LiveMap shop={shop} home={{ lat: o.lat, lng: o.lng }} status={o.status}
-            progress={(now - o.createdAt) / (orderEta(o, shop).mins * 60000)} rider={rider} />
         )}
         <OrderTimer o={o} shop={shop} />
         <Tracker o={o} />
