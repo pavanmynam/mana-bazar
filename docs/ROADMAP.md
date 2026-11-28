@@ -1,4 +1,4 @@
-# Mana Bazar — Real (production) version roadmap
+# Mee Bazar — Real (production) version roadmap
 
 Goal: a real marketplace that works across everyone's phones, ready to
 publish later on Play Store / App Store.

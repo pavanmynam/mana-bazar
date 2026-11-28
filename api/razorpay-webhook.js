@@ -1,4 +1,4 @@
-// Razorpay -> Mana Bazar. Set this URL in Razorpay Dashboard -> Webhooks:
+// Razorpay -> Mee Bazar. Set this URL in Razorpay Dashboard -> Webhooks:
 //   https://mana-bazar-rho.vercel.app/api/razorpay-webhook
 // Events: payment.captured, order.paid, payment.failed
 import { db, env, hmac, json, markPaid, sameSig } from './_lib/server.js'

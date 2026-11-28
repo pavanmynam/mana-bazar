@@ -2,7 +2,7 @@
 
 ## Store listing (copy-paste into Play Console → Grow → Store presence → Main store listing)
 
-**App name** (max 30): `Mana Bazar – Local Shops`
+**App name** (max 30): `Mee Bazar – Local Shops`
 
 **Short description** (max 80):
 `Order from your nearby kirana, medical, bakery & more – home delivery, COD & UPI.`
@@ -10,12 +10,12 @@
 **Full description** (English):
 
 ```
-Mana Bazar brings all the shops in your town into one app.
+Mee Bazar brings all the shops in your town into one app.
 
 Order groceries, medicines, bakery items, fruits & vegetables, food and more from
 trusted local shops near you – and get them delivered to your door.
 
-WHY MANA BAZAR
+WHY MEE BAZAR
 • All local shops in one place – kirana, medical, bakery, dairy, hotels, electrical, stationery and more
 • Shops sorted by distance, with delivery time shown
 • Pay with Cash on Delivery or UPI (GPay, PhonePe, Paytm)
@@ -39,7 +39,7 @@ Support: pavan.mynam@gmail.com · +91 96661 83665
 **Full description** (Telugu, add as a translation: Play Console → Store listing → Manage translations → Telugu):
 
 ```
-మన ఊరి అన్ని షాపులు – ఒకే యాప్ లో!
+మీ ఊరి అన్ని షాపులు – ఒకే యాప్ లో!
 
 మీ దగ్గరలోని కిరాణా, మెడికల్, బేకరీ, పండ్లు & కూరగాయలు, హోటల్ ఇంకా ఎన్నో షాపుల నుండి
 ఆర్డర్ చేయండి – ఇంటికే డెలివరీ.

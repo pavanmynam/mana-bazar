@@ -3,7 +3,7 @@ import POLICIES from '../legal.json'
 // Public policy pages (no login needed). Play Store, App Store and Razorpay
 // all ask for these links: /privacy /terms /refund /shipping /contact /delete-account
 export const BUSINESS = {
-  name: 'Mana Bazar',
+  name: 'Mee Bazar',
   owner: 'Prashanthi Pamarthi',
   address: 'Flat 705, 7th Floor, Tower B07, Sahabhavana Township, Beside DMart, Anand Nagar Circle, Bandlaguda, Nagole, Hyderabad, Telangana 500068',
   phone: '+91 96661 83665',
@@ -35,7 +35,7 @@ export default function Legal({ slug }) {
   const doc = POLICIES.find((p) => p.slug === slug)
   return (
     <div className="legal">
-      <a className="legal-brand" href="/">🛍️ <b>Mana Bazar</b></a>
+      <a className="legal-brand" href="/">🛍️ <b>Mee Bazar</b></a>
       {doc && (
         <>
           <h1>{doc.title}</h1>
@@ -78,9 +78,9 @@ function Contact() {
 }
 
 export function deletionRequestLinks(phone = '') {
-  const body = `Please delete my Mana Bazar account.\nRegistered mobile number: ${phone}`
+  const body = `Please delete my Mee Bazar account.\nRegistered mobile number: ${phone}`
   return {
-    mail: `mailto:${BUSINESS.email}?subject=${encodeURIComponent('Delete my Mana Bazar account')}&body=${encodeURIComponent(body)}`,
+    mail: `mailto:${BUSINESS.email}?subject=${encodeURIComponent('Delete my Mee Bazar account')}&body=${encodeURIComponent(body)}`,
     whatsapp: `https://wa.me/${BUSINESS.phoneRaw}?text=${encodeURIComponent(body)}`,
   }
 }
@@ -89,12 +89,12 @@ function DeleteAccount() {
   const l = deletionRequestLinks()
   return (
     <>
-      <h1>Delete your Mana Bazar account</h1>
+      <h1>Delete your Mee Bazar account</h1>
       <p>You can ask us to delete your account and personal data at any time. This works for customers, shop owners and delivery partners.</p>
       <h2>How to request</h2>
       <ol>
         <li>In the app: open <b>Profile → Delete my account</b>, or</li>
-        <li>Send an email to <a href={l.mail}>{BUSINESS.email}</a> or a WhatsApp message to <a href={l.whatsapp}>{BUSINESS.phone}</a> from your registered mobile number, with the subject "Delete my Mana Bazar account".</li>
+        <li>Send an email to <a href={l.mail}>{BUSINESS.email}</a> or a WhatsApp message to <a href={l.whatsapp}>{BUSINESS.phone}</a> from your registered mobile number, with the subject "Delete my Mee Bazar account".</li>
       </ol>
       <h2>What happens</h2>
       <ul>

@@ -21,10 +21,10 @@ export function roleFromPath(path = window.location.pathname) {
   return 'customer'
 }
 const HERO = {
-  customer: ['🛍️', 'Mana Bazar', 'మన ఊరి అన్ని షాపులు – ఒకే యాప్ లో'],
-  owner: ['🏪', 'Mana Bazar Partner', 'మీ షాపును ఉచితంగా ఆన్‌లైన్ లో పెట్టండి'],
-  delivery: ['🛵', 'Mana Bazar Delivery', 'డెలివరీ చేసి సంపాదించండి'],
-  admin: ['🛡️', 'Mana Bazar Admin', 'Staff only'],
+  customer: ['🛍️', 'Mee Bazar', 'మీ ఊరి అన్ని షాపులు – ఒకే యాప్ లో'],
+  owner: ['🏪', 'Mee Bazar Partner', 'మీ షాపును ఉచితంగా ఆన్‌లైన్ లో పెట్టండి'],
+  delivery: ['🛵', 'Mee Bazar Delivery', 'డెలివరీ చేసి సంపాదించండి'],
+  admin: ['🛡️', 'Mee Bazar Admin', 'Staff only'],
 }
 
 export default function Auth() {
@@ -126,7 +126,7 @@ export default function Auth() {
 
         {mode === 'login' && role !== 'admin' && (
           <p className="switch" style={{ marginTop: 4 }}>
-            <a href={`https://wa.me/${BUSINESS.phoneRaw}?text=${encodeURIComponent(`Hi Mana Bazar, I forgot my password. Please reset it.\nAccount type: ${role === 'owner' ? 'Shop owner' : role === 'delivery' ? 'Delivery partner' : 'Customer'}\nRegistered mobile: ${f.phone || ''}`)}`}
+            <a href={`https://wa.me/${BUSINESS.phoneRaw}?text=${encodeURIComponent(`Hi Mee Bazar, I forgot my password. Please reset it.\nAccount type: ${role === 'owner' ? 'Shop owner' : role === 'delivery' ? 'Delivery partner' : 'Customer'}\nRegistered mobile: ${f.phone || ''}`)}`}
               target="_blank" rel="noreferrer">Forgot password?</a>
             <small className="muted" style={{ display: 'block' }}>We'll reset it on WhatsApp and send you a new password.</small>
           </p>
@@ -144,12 +144,12 @@ export default function Auth() {
             By registering you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
           </p>
         )}
-        {role === 'delivery' && <p className="muted center-text">Want to deliver with Mana Bazar? WhatsApp us at <a href={`https://wa.me/${BUSINESS.phoneRaw}`}>{BUSINESS.phone}</a> to join.</p>}
+        {role === 'delivery' && <p className="muted center-text">Want to deliver with Mee Bazar? WhatsApp us at <a href={`https://wa.me/${BUSINESS.phoneRaw}`}>{BUSINESS.phone}</a> to join.</p>}
       </form>
       {role === 'customer' && (
-        <a className="partner-cta" href="/partner">🏪 Own a shop? <b>Sell on Mana Bazar →</b></a>
+        <a className="partner-cta" href="/partner">🏪 Own a shop? <b>Sell on Mee Bazar →</b></a>
       )}
-      {role !== 'customer' && <a className="partner-cta" href="/">← Back to Mana Bazar shopping</a>}
+      {role !== 'customer' && <a className="partner-cta" href="/">← Back to Mee Bazar shopping</a>}
       <LegalLinks />
     </div>
   )

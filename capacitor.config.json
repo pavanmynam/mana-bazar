@@ -1,6 +1,6 @@
 {
-  "appId": "com.manabazar.app",
-  "appName": "Mana Bazar",
+  "appId": "com.meebazar.app",
+  "appName": "Mee Bazar",
   "webDir": "dist",
   "android": {
     "allowMixedContent": false

@@ -15,7 +15,7 @@ import { LegalLinks, deletionRequestLinks } from './Legal'
 function shopFromUrl() {
   try { return new URLSearchParams(window.location.search).get('shop') } catch { return null }
 }
-// Pull a shop id out of a scanned Mana Bazar QR (full link or bare id).
+// Pull a shop id out of a scanned Mee Bazar QR (full link or bare id).
 function shopIdFromCode(code) {
   const m = /[?&]shop=([0-9a-f-]{36})/i.exec(code)
   return m ? m[1] : null
@@ -99,7 +99,7 @@ function Home({ db, user, cart, cat, setCat, q, setQ, openShop }) {
       else alert('This shop is not available right now.')
       return
     }
-    if (/^https?:\/\//i.test(code)) return alert('This QR is not a Mana Bazar shop code.')
+    if (/^https?:\/\//i.test(code)) return alert('This QR is not a Mee Bazar shop code.')
     setCat(null)
     setQ(code) // product barcode → shows every shop that sells it
   }
@@ -505,7 +505,7 @@ function UpiCheckout({ shop, amount, confirmed, setConfirmed }) {
   const link = upiPayLink({ upiId: shop.upiId, payeeName: shop.name, amount, orderId: shop.id })
   return (
     <div className="card" style={{ marginTop: 10 }}>
-      <p className="muted" style={{ marginTop: 0 }}>Scan with any UPI app, or tap to open one directly. Money goes straight to {shop.name} — Mana Bazar never holds it.</p>
+      <p className="muted" style={{ marginTop: 0 }}>Scan with any UPI app, or tap to open one directly. Money goes straight to {shop.name} — Mee Bazar never holds it.</p>
       <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
         <img src={upiQrImage(link)} alt="UPI QR code" width={140} height={140} style={{ borderRadius: 8, border: '1px solid #eee' }} />
         <div style={{ flex: 1, minWidth: 160 }}>
@@ -594,7 +594,7 @@ function TrackOrder({ db, id, back }) {
       <div className="card">
         <div className="row"><h2>Order #{o.code}</h2><StatusBadge s={o.status} /></div>
         <p className="muted">{shop?.icon} {shop?.name} · 📞 {shop?.phone}</p>
-        {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mana Bazar.</div>}
+        {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mee Bazar.</div>}
         <OnlinePaymentStatus o={o} />
         <OrderTimer o={o} shop={shop} />
         <Tracker o={o} />

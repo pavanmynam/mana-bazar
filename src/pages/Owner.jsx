@@ -57,7 +57,7 @@ export default function Owner({ user }) {
           <h2>{shop.name}</h2>
           {shop.status === 'pending'
             ? <p>Your shop is waiting for <b>Admin approval</b>. Once approved, customers can see your shop and place orders.</p>
-            : <p>Your shop has been <b>blocked</b> by Admin. Please contact Mana Bazar support.</p>}
+            : <p>Your shop has been <b>blocked</b> by Admin. Please contact Mee Bazar support.</p>}
           {shop.status === 'pending' && <p className="muted">To get approved faster, add your shop photo, description and documents below and tap <b>Submit for verification</b>.</p>}
         </div>
         {shop.status === 'pending' && <ShopProfileEditor shop={shop} />}
@@ -280,7 +280,7 @@ function Dashboard({ db, orders }) {
       </div>
       <div className="card bill">
         <div><span>Sales (delivered)</span><span>{money(sales)}</span></div>
-        <div><span>Mana Bazar commission ({db.settings.commission}%)</span><span>− {money(commission)}</span></div>
+        <div><span>Mee Bazar commission ({db.settings.commission}%)</span><span>− {money(commission)}</span></div>
         <div className="total"><span>Your Earnings</span><span>{money(sales - commission)}</span></div>
       </div>
       <h3 className="section-title">Order status summary</h3>
@@ -327,7 +327,7 @@ function ShopSettings({ shop }) {
       </label>
       <small className="muted">
         Set this to the UPI ID linked to your own GPay/PhonePe. Customers paying by UPI will see your QR —
-        money goes straight to your account, Mana Bazar never touches it.
+        money goes straight to your account, Mee Bazar never touches it.
       </small>
       <button className="btn primary" onClick={() => { updateShop(shop.id, { ...f, eta: Number(f.eta) }); setSaved(true); setTimeout(() => setSaved(false), 1500) }}>
         {saved ? 'Saved ✓' : 'Save Changes'}
@@ -345,7 +345,7 @@ function ShopQr({ shop }) {
   const [copied, setCopied] = useState(false)
   async function share() {
     try {
-      if (navigator.share) await navigator.share({ title: shop.name, text: `Order from ${shop.name} on Mana Bazar`, url: link })
+      if (navigator.share) await navigator.share({ title: shop.name, text: `Order from ${shop.name} on Mee Bazar`, url: link })
       else { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500) }
     } catch { /* user cancelled share */ }
   }
@@ -354,7 +354,7 @@ function ShopQr({ shop }) {
       <h3 style={{ marginTop: 24 }}>Shop QR Poster</h3>
       <small className="muted">Print this and stick it at your counter. Customers scan it with their phone camera to open your shop and order.</small>
       <div className="qr-poster">
-        <div className="qr-brand">🛍️ Mana Bazar</div>
+        <div className="qr-brand">🛍️ Mee Bazar</div>
         <b className="qr-shop">{shop.icon} {shop.name}</b>
         <img src={upiQrImage(link, 400)} alt={`QR code for ${shop.name}`} width={220} height={220} />
         <div className="qr-cta">Scan to order · Home delivery</div>

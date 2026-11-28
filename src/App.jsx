@@ -16,7 +16,7 @@ function MainApp() {
   const user = db.users.find((u) => u.id === session.userId)
 
   if (!ready || (session.userId && !user)) {
-    return <div className="auth"><div className="auth-hero"><div className="logo-big">🛍️</div><h1>Mana Bazar</h1><p>Loading…</p></div></div>
+    return <div className="auth"><div className="auth-hero"><div className="logo-big">🛍️</div><h1>Mee Bazar</h1><p>Loading…</p></div></div>
   }
   if (!user) return <Auth />
   // Logged in but opened another role's link (e.g. owner opening /admin): send to their own page.
@@ -31,8 +31,8 @@ function MainApp() {
         <div className="brand">
           <img className="logo-img" src="/logo.png" alt="" width="38" height="38" />
           <div>
-            <b>Mana Bazar <span className="te">మన బజార్</span></b>
-            <small>{user.role === 'admin' ? 'Admin Panel' : user.role === 'owner' ? 'Shop Partner' : 'మన ఊరి షాపులు · ఇంటికే డెలివరీ'}</small>
+            <b>Mee Bazar <span className="te">మీ బజార్</span></b>
+            <small>{user.role === 'admin' ? 'Admin Panel' : user.role === 'owner' ? 'Shop Partner' : 'మీ ఊరి షాపులు · ఇంటికే డెలివరీ'}</small>
           </div>
         </div>
         <div className="topbar-right">

@@ -125,7 +125,7 @@ export function ShopProfileEditor({ shop }) {
       if (missing.length) return setMsg('Please upload: ' + missing.map(docLabel).join(', '))
     }
     await updateShop(shop.id, { ...f, ...(submit ? { kycStatus: 'submitted' } : {}) })
-    setMsg(submit ? 'Sent to Mana Bazar for verification ✓' : 'Saved ✓')
+    setMsg(submit ? 'Sent to Mee Bazar for verification ✓' : 'Saved ✓')
     setTimeout(() => setMsg(''), 2500)
   }
 
@@ -151,7 +151,7 @@ export function ShopProfileEditor({ shop }) {
       </div>
 
       <b style={{ marginTop: 8 }}>Documents</b>
-      <small className="muted">Photos or PDF. Only you and Mana Bazar admin can see these.</small>
+      <small className="muted">Photos or PDF. Only you and Mee Bazar admin can see these.</small>
       {docs.map((d) => (
         <div key={d.path} className="doc-row">
           <span>📄 {docLabel(d.type)}<small className="muted"> · {d.name}</small></span>
