@@ -3,6 +3,7 @@ import {
   useStore, CATEGORIES, addToCart, cartTotals, placeOrder, setOrderStatus, updateUser,
   availablePromos, checkPromo, paymentsConfig, payOnline, fetchShopReviews, fetchOrderReview, submitReview, changeMyPassword,
   money, timeAgo, upiPayLink, upiQrImage, orderWhatsAppLink, distanceKm, etaWithDistance, slotLabel,
+  fetchRiderPosition,
 } from '../store'
 import { StatusBadge, Tracker, BottomNav } from './ui'
 import LiveMap from './LiveMap'
@@ -588,8 +589,19 @@ function EtaChip({ o, shop }) {
 function TrackOrder({ db, id, back }) {
   const now = useNow(5000)
   const o = db.orders.find((x) => x.id === id)
+  const riding = !!o?.partnerId && ['picked_up', 'out_for_delivery'].includes(o?.status)
+  const [rider, setRider] = useState(null)
+  useEffect(() => {
+    if (!riding) { setRider(null); return }
+    let alive = true
+    const tick = () => fetchRiderPosition(o.partnerId).then((p) => { if (alive) setRider(p) })
+    tick()
+    const t = setInterval(tick, 10000)
+    return () => { alive = false; clearInterval(t) }
+  }, [riding, o?.partnerId])
   if (!o) return null
   const shop = db.shops.find((s) => s.id === o.shopId)
+  const riderUser = o.partnerId ? db.users.find((u) => u.id === o.partnerId) : null
   return (
     <>
       <button className="back" onClick={back}>← Back</button>
@@ -598,9 +610,15 @@ function TrackOrder({ db, id, back }) {
         <p className="muted">{shop?.icon} {shop?.name} · 📞 {shop?.phone}</p>
         {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mee Bazar.</div>}
         <OnlinePaymentStatus o={o} />
+        {riderUser && ACTIVE.includes(o.status) && (
+          <div className="rider-chip">🛵 <b>{riderUser.name}</b> is your delivery partner
+            {riderUser.phone && <a className="btn sm" href={`tel:${riderUser.phone}`}>📞 Call</a>}
+            {riding && <small>{rider ? '📍 Live location on map' : 'Live location will appear shortly'}</small>}
+          </div>
+        )}
         {ACTIVE.concat('delivered').includes(o.status) && (
           <LiveMap shop={shop} home={{ lat: o.lat, lng: o.lng }} status={o.status}
-            progress={(now - o.createdAt) / (orderEta(o, shop).mins * 60000)} />
+            progress={(now - o.createdAt) / (orderEta(o, shop).mins * 60000)} rider={rider} />
         )}
         <OrderTimer o={o} shop={shop} />
         <Tracker o={o} />

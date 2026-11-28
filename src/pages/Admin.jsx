@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect } from 'react'
-import { useStore, CATEGORIES, updateShop, updateUser, updateSettings, setOrderStatus, money, timeAgo, STATUS_LABEL, adminSetPassword } from '../store'
+import { useStore, CATEGORIES, updateShop, updateUser, updateSettings, setOrderStatus, money, timeAgo, STATUS_LABEL, adminSetPassword, setPartnerApproved } from '../store'
 import { DocLink, docLabel, requiredDocs, licenceFor } from './ShopProfile'
 import { StatusBadge, BottomNav, Stat } from './ui'
 
@@ -15,10 +15,11 @@ export default function Admin() {
         {tab === 'shops' && <Shops db={db} />}
         {tab === 'orders' && <AllOrders db={db} />}
         {tab === 'users' && <Users db={db} />}
+        {tab === 'riders' && <Riders db={db} />}
         {tab === 'settings' && <Settings db={db} />}
       </main>
       <BottomNav tab={tab} setTab={setTab} items={[
-        ['dashboard', '📊', 'Dashboard'], ['shops', '🏪', `Shops${pending ? ` (${pending})` : ''}`], ['orders', '🧾', 'Orders'], ['users', '👥', 'Users'], ['settings', '⚙️', 'Settings'],
+        ['dashboard', '📊', 'Dashboard'], ['shops', '🏪', `Shops${pending ? ` (${pending})` : ''}`], ['orders', '🧾', 'Orders'], ['users', '👥', 'Users'], ['riders', '🛵', `Riders${db.partners.filter((p) => !p.approved).length ? ` (${db.partners.filter((p) => !p.approved).length})` : ''}`], ['settings', '⚙️', 'Settings'],
       ]} />
     </>
   )
@@ -204,6 +205,45 @@ async function resetPassword(u) {
   const r = await adminSetPassword(u.id, pw.trim())
   if (r.error) return alert(r.error)
   alert(`Done ✓\n${u.name} can now login with:\nMobile: ${u.phone}\nPassword: ${pw.trim()}\n\nAsk them to change it in Profile → Change password.`)
+}
+
+function Riders({ db }) {
+  const list = [...db.partners].sort((a, b) => (a.approved - b.approved) || (b.online - a.online))
+  const active = (id) => db.orders.filter((o) => o.partnerId === id && !['delivered', 'cancelled', 'rejected'].includes(o.status)).length
+  const done = (id) => db.orders.filter((o) => o.partnerId === id && o.status === 'delivered').length
+  return (
+    <>
+      <h2 className="page-title">Delivery partners</h2>
+      <div className="stats">
+        <Stat icon="🛵" label="Riders" value={db.partners.length} />
+        <Stat icon="🟢" label="Online now" value={db.partners.filter((p) => p.online && p.approved).length} tone="green" />
+        <Stat icon="⏳" label="Waiting approval" value={db.partners.filter((p) => !p.approved).length} />
+      </div>
+      {list.length === 0 && <div className="empty">No riders yet. Share https://mana-bazar-rho.vercel.app/delivery with delivery boys to join.</div>}
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th>Rider</th><th>Vehicle</th><th>Status</th><th>Deliveries</th><th>Action</th></tr></thead>
+          <tbody>
+            {list.map((p) => {
+              const u = db.users.find((x) => x.id === p.id)
+              return (
+                <tr key={p.id}>
+                  <td><b>{u?.name || 'Rider'}</b><br /><a href={`tel:${u?.phone}`}>📞 {u?.phone}</a><br /><small className="muted">joined {timeAgo(p.createdAt)}</small></td>
+                  <td>{p.vehicleType}<br /><small>{p.vehicleNumber}</small>{p.license && <><br /><small className="muted">DL {p.license}</small></>}</td>
+                  <td>{!p.approved ? <span className="badge sh-pending">Pending</span> : p.online ? <span className="badge sh-approved">Online</span> : <span className="badge">Offline</span>}
+                    {p.lastSeen && <><br /><small className="muted">seen {timeAgo(p.lastSeen)}</small></>}</td>
+                  <td>{done(p.id)} done{active(p.id) ? ` · ${active(p.id)} active` : ''}</td>
+                  <td>{p.approved
+                    ? <button className="btn danger sm" onClick={() => { if (confirm('Block this rider? They will stop getting orders.')) setPartnerApproved(p.id, false) }}>Block</button>
+                    : <button className="btn primary sm" onClick={() => { if (confirm(`Approve ${u?.name}? Check their licence and vehicle on a call first.`)) setPartnerApproved(p.id, true) }}>Approve</button>}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
 }
 
 function Users({ db }) {

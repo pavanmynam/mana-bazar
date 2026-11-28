@@ -67,6 +67,14 @@ function mapOrder(r) {
     history: (r.history || []).map((h) => ({ status: h.status, at: Date.parse(h.at) })),
   }
 }
+function mapPartner(r) {
+  return {
+    id: r.id, vehicleType: r.vehicle_type, vehicleNumber: r.vehicle_number || '', license: r.driving_license || '',
+    approved: !!r.approved, online: !!r.is_online, lat: r.current_lat, lng: r.current_lng,
+    lastSeen: r.last_seen ? Date.parse(r.last_seen) : null, createdAt: Date.parse(r.created_at),
+  }
+}
+
 function mapProfile(r, shops) {
   return {
     id: r.id, role: r.role, name: r.name || '', phone: r.phone, address: r.address, active: r.active, lat: r.lat, lng: r.lng,
@@ -75,7 +83,7 @@ function mapProfile(r, shops) {
 }
 
 // ---------- cached snapshot ----------
-const emptyDb = { users: [], shops: [], products: [], orders: [], settings: { deliveryFee: 20, freeDeliveryAbove: 499, commission: 5 } }
+const emptyDb = { users: [], partners: [], shops: [], products: [], orders: [], settings: { deliveryFee: 20, freeDeliveryAbove: 499, commission: 5 } }
 let db = emptyDb
 let session = { userId: null, cart: loadCart() }
 let ready = false
@@ -124,7 +132,7 @@ async function refresh() {
   if (loading) return loading
   loading = (async () => {
     const signedIn = !!session.userId
-    const [cats, cfg, shops, products, orders, profiles, adm] = await Promise.all([
+    const [cats, cfg, shops, products, orders, profiles, adm, partners] = await Promise.all([
       supabase.from('categories').select('*').eq('active', true).order('sort'),
       supabase.from('settings').select('*').eq('id', 1).maybeSingle(),
       supabase.from('shops').select('*').order('created_at'),
@@ -132,6 +140,7 @@ async function refresh() {
       signedIn ? supabase.from('orders').select('*').order('created_at', { ascending: false }) : { data: [] },
       signedIn ? supabase.from('profiles').select('*') : { data: [] },
       supabase.rpc('admin_exists'),
+      signedIn ? supabase.from('delivery_partners').select('*') : { data: [] },
     ])
     for (const r of [cats, cfg, shops, products, orders, profiles]) if (r.error) console.error(r.error)
     if (cats.data?.length) {
@@ -143,6 +152,7 @@ async function refresh() {
       products: (products.data || []).map(mapProduct),
       orders: (orders.data || []).map(mapOrder),
       users: (profiles.data || []).map((p) => mapProfile(p, mappedShops)),
+      partners: (partners.data || []).map(mapPartner),
       settings: cfg.data
         ? { deliveryFee: num(cfg.data.delivery_fee), freeDeliveryAbove: num(cfg.data.free_delivery_above), commission: num(cfg.data.commission_percent) }
         : emptyDb.settings,
@@ -259,6 +269,62 @@ export async function registerOwner({ name, phone, password, shopName, category,
   await refresh()
   return null
 }
+
+export async function registerDelivery({ name, phone, password, address, vehicleType, vehicleNumber, license }) {
+  const bad = checkPhone(phone) || checkPassword(password)
+  if (bad) return bad
+  if (!vehicleNumber?.trim()) return 'Please enter your vehicle number'
+  const r = await signUp({ phone, password, role: 'delivery', name, address })
+  if (r.error) return r.error
+  const { error } = await supabase.from('delivery_partners').insert({
+    id: session.userId, vehicle_type: vehicleType || 'bike', vehicle_number: vehicleNumber.trim().toUpperCase(),
+    driving_license: (license || '').trim().toUpperCase() || null,
+  })
+  if (error) return fail(error)
+  await refresh()
+  return null
+}
+
+// ---------- delivery partner (rider) ----------
+export async function setRiderOnline(online, pos) {
+  const row = { is_online: online, last_seen: new Date().toISOString() }
+  if (pos) { row.current_lat = pos.lat; row.current_lng = pos.lng }
+  const { error } = await supabase.from('delivery_partners').update(row).eq('id', session.userId)
+  report(error)
+  await refresh()
+  return !error
+}
+// Sent every ~15 s while online; no full reload (keeps the app light).
+export async function sendRiderLocation(lat, lng) {
+  if (!session.userId) return
+  await supabase.from('delivery_partners')
+    .update({ current_lat: lat, current_lng: lng, last_seen: new Date().toISOString() })
+    .eq('id', session.userId)
+}
+export async function acceptDelivery(orderId) {
+  const { data, error } = await supabase.from('orders').update({ delivery_partner_id: session.userId })
+    .eq('id', orderId).is('delivery_partner_id', null).select('id')
+  await refresh()
+  if (error) return fail(error)
+  if (!data?.length) return 'Another rider already took this order'
+  return null
+}
+export async function setPartnerApproved(id, approved) {
+  const { error } = await supabase.from('delivery_partners').update({ approved }).eq('id', id)
+  report(error)
+  await refresh()
+}
+// Customer tracking: rider's live position for an order (allowed by RLS
+// only while the order is picked up / out for delivery).
+export async function fetchRiderPosition(partnerId) {
+  if (!partnerId) return null
+  const { data } = await supabase.from('delivery_partners').select('current_lat, current_lng, last_seen').eq('id', partnerId).maybeSingle()
+  if (!data || data.current_lat == null) return null
+  const age = Date.now() - Date.parse(data.last_seen || 0)
+  return age < 3 * 60000 ? { lat: data.current_lat, lng: data.current_lng } : null
+}
+
+export function reloadData() { return refresh() }
 
 export function hasAdmin() { return adminExists }
 export async function createFirstAdmin({ username, password }) {

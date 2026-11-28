@@ -387,3 +387,18 @@ html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation: none 
 .map-pin.home span { border: 3px solid #2e7d32; }
 .map-pin.rider span { border: 3px solid #1565c0; animation: pop 1.2s ease infinite; }
 .map-note { position: absolute; left: 10px; bottom: 8px; background: rgba(255,255,255,.9); padding: 2px 8px; border-radius: 8px; font-size: 11px; z-index: 500; }
+
+/* ---------- Delivery partner app ---------- */
+.rider-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-left: 5px solid #bbb; }
+.rider-status.on { border-left-color: #16a34a; background: #f0fdf4; }
+.rider-status div { display: flex; flex-direction: column; gap: 2px; }
+.rider-status small { color: #555; }
+.rider-job .job-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.rider-job .job-meta span { background: #f3f4f6; border-radius: 999px; padding: 3px 10px; font-size: 13px; }
+.rider-active { border: 2px solid #f97316; display: flex; flex-direction: column; gap: 8px; }
+.rider-step { background: #fff7ed; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.rider-step > small:first-child { font-weight: 700; color: #c2410c; letter-spacing: .04em; }
+.rider-step .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.rider-chip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #eff6ff; border-radius: 10px; padding: 8px 10px; margin: 6px 0; }
+.rider-chip small { width: 100%; color: #555; }
+.btn.block { width: 100%; }

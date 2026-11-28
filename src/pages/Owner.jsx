@@ -106,7 +106,9 @@ function Orders({ db, orders }) {
         const cust = db.users.find((u) => u.id === o.customerId)
         const i = ORDER_STEPS.indexOf(o.status)
         const awaitingPay = o.payment === 'RAZORPAY' && o.paymentStatus !== 'paid'
-        const next = awaitingPay ? null : ORDER_STEPS[i + 1]
+        const rider = o.partnerId ? db.users.find((u) => u.id === o.partnerId) : null
+        // Once a Mee Bazar rider takes the order, the rider app moves it on.
+        const next = awaitingPay || i < 0 || (rider && i >= ORDER_STEPS.indexOf('packed')) ? null : ORDER_STEPS[i + 1]
         return (
           <div key={o.id} className={'card order-card' + (o.status === 'placed' ? ' new' : '')}>
             <div className="row"><b>#{o.code}</b><StatusBadge s={o.status} /></div>
@@ -115,6 +117,7 @@ function Orders({ db, orders }) {
             <ul className="items">{o.items.map((it) => <li key={it.productId}>{it.emoji} {it.name} × <b>{it.qty}</b> <span>{money(it.price * it.qty)}</span></li>)}</ul>
             <div className="row"><span>👤 {cust?.name} · 📞 {cust?.phone}</span><b>{money(o.total)}</b></div>
             <small className="muted">📍 {o.address}</small>
+            {rider && <small className="rider-chip">🛵 Rider: <b>{rider.name}</b> · <a href={`tel:${rider.phone}`}>📞 {rider.phone}</a>{['accepted', 'packed'].includes(o.status) && ' · coming to pick up'}</small>}
             {o.note && <small className="note">📝 {o.note}</small>}
             {next && (
               <div className="actions">

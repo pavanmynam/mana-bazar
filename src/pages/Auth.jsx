@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CATEGORIES, login, registerCustomer, registerOwner, createFirstAdmin, useStore } from '../store'
+import { CATEGORIES, login, registerCustomer, registerOwner, registerDelivery, createFirstAdmin, useStore } from '../store'
 import { LegalLinks, BUSINESS } from './Legal'
 
 const ROLES = [
@@ -32,7 +32,7 @@ export default function Auth() {
   const [busy, setBusy] = useState(false)
   const role = roleFromPath()
   const [mode, setMode] = useState('login')
-  const [f, setF] = useState({ phone: '', password: '', password2: '', name: '', address: '', shopName: '', category: 'grocery' })
+  const [f, setF] = useState({ phone: '', password: '', password2: '', name: '', address: '', shopName: '', category: 'grocery', vehicleType: 'bike', vehicleNumber: '', license: '' })
   const [showPw, setShowPw] = useState(false)
   const [err, setErr] = useState('')
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
@@ -53,6 +53,7 @@ export default function Auth() {
       else if (f.password.length < 6) msg = 'Password must be at least 6 characters'
       else if (f.password !== f.password2) msg = 'Passwords do not match — please type the same password twice'
       else if (role === 'customer') msg = await registerCustomer(f)
+      else if (role === 'delivery') msg = await registerDelivery(f)
       else if (!f.shopName || !f.address) msg = 'Please fill shop name and address'
       else msg = await registerOwner(f)
     } catch (ex) {
@@ -75,7 +76,7 @@ export default function Auth() {
         <h2>
           {adminSetup ? 'Create Admin Account'
             : mode === 'login' ? (role === 'customer' ? 'Login' : `${r.label} Login`)
-              : role === 'owner' ? 'Register your Shop' : 'Create Account'}
+              : role === 'owner' ? 'Register your Shop' : role === 'delivery' ? 'Join Mee Bazar Delivery' : 'Create Account'}
         </h2>
         {adminSetup && (
           <p className="muted" style={{ marginTop: -4 }}>
@@ -113,8 +114,20 @@ export default function Auth() {
             </label>
           </>
         )}
+        {mode === 'register' && role === 'delivery' && (
+          <>
+            <label>Vehicle
+              <select value={f.vehicleType} onChange={set('vehicleType')}>
+                <option value="bike">🏍️ Bike / Scooter</option><option value="cycle">🚲 Cycle</option>
+                <option value="ev">🛵 Electric scooter</option><option value="auto">🛺 Auto</option>
+              </select>
+            </label>
+            <label>Vehicle number<input value={f.vehicleNumber} onChange={set('vehicleNumber')} placeholder="TS 08 AB 1234" /></label>
+            <label>Driving licence number<input value={f.license} onChange={set('license')} placeholder="optional for cycle" /></label>
+          </>
+        )}
         {mode === 'register' && (
-          <label>{role === 'owner' ? 'Shop Address' : 'Delivery Address'}
+          <label>{role === 'owner' ? 'Shop Address' : role === 'delivery' ? 'Your Area / Address' : 'Delivery Address'}
             <textarea rows={2} value={f.address} onChange={set('address')} placeholder="Door no, street, area, city" />
           </label>
         )}
@@ -131,11 +144,11 @@ export default function Auth() {
             <small className="muted" style={{ display: 'block' }}>We'll reset it on WhatsApp and send you a new password.</small>
           </p>
         )}
-        {role !== 'admin' && role !== 'delivery' && (
+        {role !== 'admin' && (
           <p className="switch">
             {mode === 'login' ? 'New here? ' : 'Already registered? '}
             <a onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr('') }}>
-              {mode === 'login' ? (role === 'owner' ? 'Register your shop' : 'Create account') : 'Login'}
+              {mode === 'login' ? (role === 'owner' ? 'Register your shop' : role === 'delivery' ? 'Join as rider' : 'Create account') : 'Login'}
             </a>
           </p>
         )}
@@ -144,7 +157,6 @@ export default function Auth() {
             By registering you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
           </p>
         )}
-        {role === 'delivery' && <p className="muted center-text">Want to deliver with Mee Bazar? WhatsApp us at <a href={`https://wa.me/${BUSINESS.phoneRaw}`}>{BUSINESS.phone}</a> to join.</p>}
       </form>
       {role === 'customer' && (
         <a className="partner-cta" href="/partner">🏪 Own a shop? <b>Sell on Mee Bazar →</b></a>
