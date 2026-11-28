@@ -5,13 +5,32 @@ import { LegalLinks, BUSINESS } from './Legal'
 const ROLES = [
   { id: 'customer', label: 'Customer', icon: '🧑' },
   { id: 'owner', label: 'Shop Owner', icon: '🏪' },
+  { id: 'delivery', label: 'Delivery Partner', icon: '🛵' },
   { id: 'admin', label: 'Admin', icon: '🛡️' },
 ]
+
+// Each kind of user has their own link (like Swiggy / Swiggy Partner / Swiggy Delivery):
+//   /          customers      /partner   shop owners
+//   /delivery  riders         /admin     admin (not linked anywhere)
+export const ROLE_PATHS = { customer: '/', owner: '/partner', delivery: '/delivery', admin: '/admin' }
+export function roleFromPath(path = window.location.pathname) {
+  const p = path.replace(/\/+$/, '').toLowerCase()
+  if (p === '/partner' || p === '/shop') return 'owner'
+  if (p === '/delivery' || p === '/rider') return 'delivery'
+  if (p === '/admin') return 'admin'
+  return 'customer'
+}
+const HERO = {
+  customer: ['🛍️', 'Mana Bazar', 'మన ఊరి అన్ని షాపులు – ఒకే యాప్ లో'],
+  owner: ['🏪', 'Mana Bazar Partner', 'మీ షాపును ఉచితంగా ఆన్‌లైన్ లో పెట్టండి'],
+  delivery: ['🛵', 'Mana Bazar Delivery', 'డెలివరీ చేసి సంపాదించండి'],
+  admin: ['🛡️', 'Mana Bazar Admin', 'Staff only'],
+}
 
 export default function Auth() {
   const { adminExists } = useStore()
   const [busy, setBusy] = useState(false)
-  const [role, setRole] = useState('customer')
+  const role = roleFromPath()
   const [mode, setMode] = useState('login')
   const [f, setF] = useState({ phone: '', password: '', name: '', address: '', shopName: '', category: 'grocery' })
   const [err, setErr] = useState('')
@@ -41,26 +60,17 @@ export default function Auth() {
 
   return (
     <div className="auth">
-      <div className="auth-hero">
-        <div className="logo-big">🛍️</div>
-        <h1>Mana Bazar</h1>
-        <p>మన ఊరి అన్ని షాపులు – ఒకే యాప్ లో</p>
-        <div className="hero-cats">{CATEGORIES.map((c) => <span key={c.id} title={c.name}>{c.icon}</span>)}</div>
+      <div className={'auth-hero role-' + role}>
+        <div className="logo-big">{HERO[role][0]}</div>
+        <h1>{HERO[role][1]}</h1>
+        <p>{HERO[role][2]}</p>
+        {role === 'customer' && <div className="hero-cats">{CATEGORIES.map((c) => <span key={c.id} title={c.name}>{c.icon}</span>)}</div>}
       </div>
 
       <form className="card auth-card" onSubmit={submit}>
-        <div className="role-tabs">
-          {ROLES.map((x) => (
-            <button type="button" key={x.id} className={role === x.id ? 'active' : ''}
-              onClick={() => { setRole(x.id); setMode('login'); setErr('') }}>
-              <span>{x.icon}</span>{x.label}
-            </button>
-          ))}
-        </div>
-
         <h2>
           {adminSetup ? 'Create Admin Account'
-            : mode === 'login' ? `${r.label} Login`
+            : mode === 'login' ? (role === 'customer' ? 'Login' : `${r.label} Login`)
               : role === 'owner' ? 'Register your Shop' : 'Create Account'}
         </h2>
         {adminSetup && (
@@ -105,7 +115,7 @@ export default function Auth() {
             <small className="muted" style={{ display: 'block' }}>We'll reset it on WhatsApp and send you a new password.</small>
           </p>
         )}
-        {role !== 'admin' && (
+        {role !== 'admin' && role !== 'delivery' && (
           <p className="switch">
             {mode === 'login' ? 'New here? ' : 'Already registered? '}
             <a onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setErr('') }}>
@@ -118,7 +128,12 @@ export default function Auth() {
             By registering you agree to our <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
           </p>
         )}
+        {role === 'delivery' && <p className="muted center-text">Want to deliver with Mana Bazar? WhatsApp us at <a href={`https://wa.me/${BUSINESS.phoneRaw}`}>{BUSINESS.phone}</a> to join.</p>}
       </form>
+      {role === 'customer' && (
+        <a className="partner-cta" href="/partner">🏪 Own a shop? <b>Sell on Mana Bazar →</b></a>
+      )}
+      {role !== 'customer' && <a className="partner-cta" href="/">← Back to Mana Bazar shopping</a>}
       <LegalLinks />
     </div>
   )

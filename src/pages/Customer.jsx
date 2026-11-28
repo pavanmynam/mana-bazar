@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useDeferredValue } from 'react'
 import {
   useStore, CATEGORIES, addToCart, cartTotals, placeOrder, setOrderStatus, updateUser,
   availablePromos, checkPromo, paymentsConfig, payOnline, fetchShopReviews, fetchOrderReview, submitReview, changeMyPassword,
@@ -7,6 +7,7 @@ import {
 import { StatusBadge, Tracker, BottomNav, useGeolocation } from './ui'
 import Scanner from './Scanner'
 import { sfx, fxPrefs, setFxPref } from '../fx'
+import { buildIndex, searchProducts, shopMatches } from '../search'
 import { LegalLinks, deletionRequestLinks } from './Legal'
 
 // A shop QR poster opens the site as /?shop=<id>.
@@ -39,7 +40,7 @@ export default function Customer({ user }) {
   let body
   if (shopId) body = <ShopPage db={db} cart={session.cart} shopId={shopId} back={() => setShopId(null)} />
   else if (trackId) body = <TrackOrder db={db} id={trackId} back={() => setTrackId(null)} />
-  else if (tab === 'home') body = <Home db={db} user={user} cat={cat} setCat={setCat} q={q} setQ={setQ} openShop={setShopId} />
+  else if (tab === 'home') body = <Home db={db} user={user} cart={session.cart} cat={cat} setCat={setCat} q={q} setQ={setQ} openShop={setShopId} />
   else if (tab === 'cart') body = <Cart db={db} user={user} cart={session.cart} openShop={setShopId} onPlaced={(id) => { setTab('orders'); setTrackId(id) }} />
   else if (tab === 'orders') body = <MyOrders db={db} user={user} open={setTrackId} />
   else body = <Profile user={user} />
@@ -60,14 +61,18 @@ export default function Customer({ user }) {
   )
 }
 
-function Home({ db, user, cat, setCat, q, setQ, openShop }) {
+function Home({ db, user, cart, cat, setCat, q, setQ, openShop }) {
   const geo = useGeolocation()
-  const shops = db.shops.filter((s) => s.status === 'approved')
+  const shops = useMemo(() => db.shops.filter((s) => s.status === 'approved'), [db.shops])
   const [scanning, setScanning] = useState(false)
-  const query = q.trim().toLowerCase()
-  const matchingProducts = query
-    ? db.products.filter((p) => (p.name.toLowerCase().includes(query) || (p.barcode && p.barcode === q.trim())) && shops.some((s) => s.id === p.shopId))
-    : []
+  const [showAll, setShowAll] = useState(false)
+  const dq = useDeferredValue(q)
+  const query = dq.trim()
+  const openIds = useMemo(() => new Set(shops.map((s) => s.id)), [shops])
+  const index = useMemo(() => buildIndex(db.products.filter((p) => openIds.has(p.shopId)), shops, CATEGORIES), [db.products, shops, openIds])
+  const barcodeHits = query ? db.products.filter((p) => p.barcode && p.barcode === query && openIds.has(p.shopId)) : []
+  const matchingProducts = query ? [...barcodeHits, ...searchProducts(index, query).map((r) => r.p).filter((p) => !barcodeHits.includes(p))] : []
+  useEffect(() => { setShowAll(false) }, [query])
 
   function onScan(code) {
     setScanning(false)
@@ -81,9 +86,10 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
     setCat(null)
     setQ(code) // product barcode → shows every shop that sells it
   }
+  const hitShops = new Set(matchingProducts.map((p) => p.shopId))
   let list = shops.filter((s) =>
     (!cat || s.category === cat) &&
-    (!query || s.name.toLowerCase().includes(query) || matchingProducts.some((p) => p.shopId === s.id)))
+    (!query || hitShops.has(s.id) || shopMatches(s, query, CATEGORIES)))
 
   const withDistance = list.map((s) => ({
     ...s, km: geo.status === 'granted' ? distanceKm(geo.lat, geo.lng, s.lat, s.lng) : null,
@@ -104,7 +110,7 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
       {geo.status === 'asking' && <div className="muted" style={{ padding: '8px 0' }}>📍 Finding shops near you…</div>}
       <div className="search">
         <span>🔍</span>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search shops, rice, medicines, cake..." />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search rice, బియ్యం, pappu, medicines, shop name…" />
         {q && <button onClick={() => setQ('')}>✕</button>}
         <button onClick={() => setScanning(true)} aria-label="Scan barcode or shop QR" title="Scan barcode or shop QR">📷</button>
       </div>
@@ -130,8 +136,31 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
         ))}
       </div>
 
+      {query && (() => {
+        const km = new Map(list.map((s) => [s.id, s.km]))
+        const shopOf = new Map(shops.map((s) => [s.id, s]))
+        // Best match first; among equal matches, open shops and nearer shops first.
+        const ranked = matchingProducts
+          .filter((p) => !cat || shopOf.get(p.shopId)?.category === cat)
+          .map((p, i) => ({ p, i, s: shopOf.get(p.shopId), km: km.get(p.shopId) ?? null }))
+          .sort((a, b) => (Math.floor(a.i / 12) - Math.floor(b.i / 12)) || ((b.s?.open ? 1 : 0) - (a.s?.open ? 1 : 0)) || ((a.km ?? 999) - (b.km ?? 999)) || (a.p.price - b.p.price))
+        const shown = showAll ? ranked.slice(0, 120) : ranked.slice(0, 15)
+        return (
+          <>
+            <h3 className="section-title">🛍️ Items near you <small>· {ranked.length >= 200 ? '200+' : ranked.length}</small></h3>
+            {ranked.length === 0 && <div className="empty">No items found for "{q}". Try another word — Telugu or English both work.</div>}
+            <div className="products">
+              {shown.map(({ p, s, km: d }) => (
+                <SearchHit key={p.id} p={p} s={s} km={d} cart={cart} openShop={openShop} />
+              ))}
+            </div>
+            {ranked.length > shown.length && <button className="btn ghost block" onClick={() => setShowAll(true)}>Show more items</button>}
+          </>
+        )
+      })()}
+
       <h3 className="section-title">
-        {cat ? CATEGORIES.find((c) => c.id === cat).name + ' near you' : query ? `Results for "${q}"` : 'All shops near you'}
+        {cat ? CATEGORIES.find((c) => c.id === cat).name + ' near you' : query ? `Shops for "${q}"` : 'All shops near you'}
         <small> · {list.length}</small>
       </h3>
       {list.length === 0 && <div className="empty">No shops found 😕</div>}
@@ -160,6 +189,30 @@ function Home({ db, user, cat, setCat, q, setQ, openShop }) {
         })}
       </div>
     </>
+  )
+}
+
+function SearchHit({ p, s, km, cart, openShop }) {
+  const n = cart?.shopId === p.shopId ? cart.items.find((x) => x.productId === p.id)?.qty || 0 : 0
+  return (
+    <div className={'product tap search-hit' + (p.inStock ? '' : ' oos')} onClick={() => openShop(p.shopId)}>
+      {p.images[0] ? <img className="p-img" src={p.images[0]} alt="" loading="lazy" /> : <div className="p-emoji">{p.emoji || '📦'}</div>}
+      <div className="p-info">
+        <b>{p.name}</b>
+        <small>{p.unit}</small>
+        {p.offer && <span className="offer-tag">🏷️ {p.offer}</span>}
+        <div><span className="price">{money(p.price)}</span>{p.mrp > p.price && <s>{money(p.mrp)}</s>}</div>
+        <small className="hit-shop">{s?.icon} {s?.name}{km != null ? ` · 📍 ${km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km'}` : ''}{s && !s.open ? ' · Closed now' : ''}</small>
+      </div>
+      {!p.inStock ? <span className="oos-tag">Out of stock</span>
+        : !s?.open ? null
+          : n === 0 ? <button className="btn add" onClick={(e) => { e.stopPropagation(); addToCart(p, 1) }}>ADD</button>
+            : (
+              <div className="qty" onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => addToCart(p, -1)}>−</button><b key={n}>{n}</b><button onClick={() => addToCart(p, 1)}>+</button>
+              </div>
+            )}
+    </div>
   )
 }
 

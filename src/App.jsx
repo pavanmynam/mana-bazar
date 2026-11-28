@@ -1,5 +1,5 @@
 import { useStore, logout } from './store'
-import Auth from './pages/Auth'
+import Auth, { roleFromPath, ROLE_PATHS } from './pages/Auth'
 import Customer from './pages/Customer'
 import Owner from './pages/Owner'
 import Admin from './pages/Admin'
@@ -19,6 +19,11 @@ function MainApp() {
     return <div className="auth"><div className="auth-hero"><div className="logo-big">🛍️</div><h1>Mana Bazar</h1><p>Loading…</p></div></div>
   }
   if (!user) return <Auth />
+  // Logged in but opened another role's link (e.g. owner opening /admin): send to their own page.
+  const want = roleFromPath()
+  if (want !== user.role && window.location.pathname !== ROLE_PATHS[user.role]) {
+    if (want !== 'customer' || user.role !== 'customer') window.history.replaceState(null, '', ROLE_PATHS[user.role] + window.location.search)
+  }
 
   return (
     <div className="app">
