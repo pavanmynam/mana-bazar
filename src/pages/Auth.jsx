@@ -32,7 +32,8 @@ export default function Auth() {
   const [busy, setBusy] = useState(false)
   const role = roleFromPath()
   const [mode, setMode] = useState('login')
-  const [f, setF] = useState({ phone: '', password: '', name: '', address: '', shopName: '', category: 'grocery' })
+  const [f, setF] = useState({ phone: '', password: '', password2: '', name: '', address: '', shopName: '', category: 'grocery' })
+  const [showPw, setShowPw] = useState(false)
   const [err, setErr] = useState('')
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const r = ROLES.find((x) => x.id === role)
@@ -46,8 +47,11 @@ export default function Auth() {
     let msg
     try {
       if (adminSetup) msg = await createFirstAdmin({ username: f.phone, password: f.password })
-      else if (mode === 'login') msg = await login(f.phone, f.password, role)
+      else if (mode === 'login') msg = await login(f.phone.trim(), f.password, role)
       else if (!f.name || !f.phone || !f.password) msg = 'Please fill all fields'
+      else if (!/^[6-9]\d{9}$/.test(f.phone.trim())) msg = 'Enter a valid 10-digit mobile number'
+      else if (f.password.length < 6) msg = 'Password must be at least 6 characters'
+      else if (f.password !== f.password2) msg = 'Passwords do not match — please type the same password twice'
       else if (role === 'customer') msg = await registerCustomer(f)
       else if (!f.shopName || !f.address) msg = 'Please fill shop name and address'
       else msg = await registerOwner(f)
@@ -85,7 +89,19 @@ export default function Auth() {
         <label>{role === 'admin' ? 'Username' : 'Mobile Number'}
           <input value={f.phone} onChange={set('phone')} placeholder={role === 'admin' ? 'choose a username' : '10-digit mobile'} inputMode={role === 'admin' ? 'text' : 'numeric'} />
         </label>
-        <label>Password<input type="password" value={f.password} onChange={set('password')} placeholder={adminSetup || mode === 'register' ? 'min 6 characters' : 'Password'} /></label>
+        <label>Password
+          <span className="pw-row">
+            <input type={showPw ? 'text' : 'password'} value={f.password} onChange={set('password')} placeholder={adminSetup || mode === 'register' ? 'min 6 characters' : 'Password'}
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'} />
+            <button type="button" className="pw-eye" onClick={() => setShowPw(!showPw)} aria-label={showPw ? 'Hide password' : 'Show password'}>{showPw ? '🙈' : '👁️'}</button>
+          </span>
+        </label>
+        {mode === 'register' && !adminSetup && (
+          <>
+            <label>Confirm Password<input type={showPw ? 'text' : 'password'} value={f.password2} onChange={set('password2')} placeholder="type the same password again" autoComplete="new-password" /></label>
+            <small className="muted">🔐 Remember this password — you will use your mobile number + this password to login. Forgot it later? Tap "Forgot password?" on the login screen.</small>
+          </>
+        )}
 
         {mode === 'register' && role === 'owner' && (
           <>

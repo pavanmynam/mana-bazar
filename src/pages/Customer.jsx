@@ -5,7 +5,7 @@ import {
   money, timeAgo, upiPayLink, upiQrImage, orderWhatsAppLink, distanceKm, etaWithDistance, slotLabel,
 } from '../store'
 import { StatusBadge, Tracker, BottomNav } from './ui'
-import { useDeliveryLocation, LocationSheet, useNow } from '../location'
+import { useDeliveryLocation, LocationSheet, useNow, gpsFix, reverseGeocode, saveLocation } from '../location'
 import Scanner from './Scanner'
 import { sfx, fxPrefs, setFxPref } from '../fx'
 import { buildIndex, searchProducts, shopMatches } from '../search'
@@ -66,6 +66,20 @@ function Home({ db, user, cart, cat, setCat, q, setQ, openShop }) {
   const loc = useDeliveryLocation()
   const here = loc || (user.lat != null ? { lat: user.lat, lng: user.lng, label: 'Saved location' } : null)
   const [locOpen, setLocOpen] = useState(false)
+  const [locBusy, setLocBusy] = useState(false)
+  // First time after login: ask the phone for its location automatically.
+  useEffect(() => {
+    if (loc) return
+    let done = false
+    try { done = sessionStorage.getItem('mb_auto_loc') === '1'; sessionStorage.setItem('mb_auto_loc', '1') } catch { /* ignore */ }
+    if (done) return
+    setLocBusy(true)
+    gpsFix().then(async (fix) => {
+      const label = (await reverseGeocode(fix.lat, fix.lng)) || 'Current location'
+      if (fix.accuracy <= 1500) saveLocation({ ...fix, label, source: 'gps' }, user.id)
+      else setLocOpen(true) // laptop Wi-Fi guess: let the customer confirm or search
+    }).catch(() => setLocOpen(true)).finally(() => setLocBusy(false))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const shops = useMemo(() => db.shops.filter((s) => s.status === 'approved'), [db.shops])
   const [scanning, setScanning] = useState(false)
   const [showAll, setShowAll] = useState(false)
@@ -107,7 +121,7 @@ function Home({ db, user, cart, cat, setCat, q, setQ, openShop }) {
         <span className="loc-pin">📍</span>
         <span className="loc-text">
           <small>Deliver to</small>
-          <b>{here ? here.label : 'Set your location'}</b>
+          <b>{locBusy ? 'Finding your location…' : here ? here.label : 'Set your location'}</b>
         </span>
         <span className="loc-change">{here ? 'Change' : 'Set'} ▾</span>
       </button>
