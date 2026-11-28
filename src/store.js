@@ -62,13 +62,14 @@ function mapOrder(r) {
     items: (r.items || []).map((i) => ({ productId: i.product_id, name: i.name, price: num(i.price), qty: i.qty, unit: i.unit, emoji: i.emoji })),
     itemTotal: num(r.item_total), deliveryFee: num(r.delivery_fee), discount: num(r.discount), total: num(r.total),
     payment: String(r.payment_method || '').toUpperCase(), paymentStatus: r.payment_status,
-    address: r.address, note: r.note, status: r.status, createdAt: Date.parse(r.created_at),
+    address: r.address, note: r.note, status: r.status, createdAt: Date.parse(r.created_at), lat: r.lat, lng: r.lng,
+    deliveredAt: r.delivered_at ? Date.parse(r.delivered_at) : null,
     history: (r.history || []).map((h) => ({ status: h.status, at: Date.parse(h.at) })),
   }
 }
 function mapProfile(r, shops) {
   return {
-    id: r.id, role: r.role, name: r.name || '', phone: r.phone, address: r.address, active: r.active,
+    id: r.id, role: r.role, name: r.name || '', phone: r.phone, address: r.address, active: r.active, lat: r.lat, lng: r.lng,
     shopId: shops.find((s) => s.ownerId === r.id)?.id,
   }
 }
@@ -279,6 +280,8 @@ export async function updateUser(id, patch) {
   if ('name' in patch) row.name = patch.name
   if ('address' in patch) row.address = patch.address
   if ('active' in patch) row.active = patch.active
+  if ('lat' in patch) row.lat = patch.lat
+  if ('lng' in patch) row.lng = patch.lng
   const { error } = await supabase.from('profiles').update(row).eq('id', id)
   report(error)
   await refresh()

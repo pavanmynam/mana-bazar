@@ -4,7 +4,8 @@ import {
   availablePromos, checkPromo, paymentsConfig, payOnline, fetchShopReviews, fetchOrderReview, submitReview, changeMyPassword,
   money, timeAgo, upiPayLink, upiQrImage, orderWhatsAppLink, distanceKm, etaWithDistance, slotLabel,
 } from '../store'
-import { StatusBadge, Tracker, BottomNav, useGeolocation } from './ui'
+import { StatusBadge, Tracker, BottomNav } from './ui'
+import { useDeliveryLocation, LocationSheet, useNow } from '../location'
 import Scanner from './Scanner'
 import { sfx, fxPrefs, setFxPref } from '../fx'
 import { buildIndex, searchProducts, shopMatches } from '../search'
@@ -62,7 +63,9 @@ export default function Customer({ user }) {
 }
 
 function Home({ db, user, cart, cat, setCat, q, setQ, openShop }) {
-  const geo = useGeolocation()
+  const loc = useDeliveryLocation()
+  const here = loc || (user.lat != null ? { lat: user.lat, lng: user.lng, label: 'Saved location' } : null)
+  const [locOpen, setLocOpen] = useState(false)
   const shops = useMemo(() => db.shops.filter((s) => s.status === 'approved'), [db.shops])
   const [scanning, setScanning] = useState(false)
   const [showAll, setShowAll] = useState(false)
@@ -92,22 +95,29 @@ function Home({ db, user, cart, cat, setCat, q, setQ, openShop }) {
     (!query || hitShops.has(s.id) || shopMatches(s, query, CATEGORIES)))
 
   const withDistance = list.map((s) => ({
-    ...s, km: geo.status === 'granted' ? distanceKm(geo.lat, geo.lng, s.lat, s.lng) : null,
+    ...s, km: here ? distanceKm(here.lat, here.lng, s.lat, s.lng) : null,
   }))
-  list = geo.status === 'granted'
+  list = here
     ? [...withDistance].sort((a, b) => (a.km ?? 999) - (b.km ?? 999))
     : withDistance
 
   return (
     <>
-      <div className="deliver-to">📍 Deliver to <b>{user.address || 'Add address in Profile'}</b></div>
-      {geo.status === 'denied' && (
-        <div className="warn" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Location off — shops sorted by name, not distance.</span>
-          <button className="btn ghost sm" onClick={geo.retry}>Try again</button>
+      <button className="deliver-to" onClick={() => setLocOpen(true)}>
+        <span className="loc-pin">📍</span>
+        <span className="loc-text">
+          <small>Deliver to</small>
+          <b>{here ? here.label : 'Set your location'}</b>
+        </span>
+        <span className="loc-change">{here ? 'Change' : 'Set'} ▾</span>
+      </button>
+      {!here && (
+        <div className="warn loc-ask">
+          <span>Set your delivery location to see the nearest shops first.</span>
+          <button className="btn primary sm" onClick={() => setLocOpen(true)}>📍 Allow location</button>
         </div>
       )}
-      {geo.status === 'asking' && <div className="muted" style={{ padding: '8px 0' }}>📍 Finding shops near you…</div>}
+      {locOpen && <LocationSheet userId={user.id} onClose={() => setLocOpen(false)} />}
       <div className="search">
         <span>🔍</span>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search rice, బియ్యం, pappu, medicines, shop name…" />
@@ -343,6 +353,7 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
   const [upiConfirmed, setUpiConfirmed] = useState(false)
   const [placing, setPlacing] = useState(false)
   const [promo, setPromo] = useState(null) // { code, discount, description }
+  const dloc = useDeliveryLocation()
   const [online, setOnline] = useState(false)
   useEffect(() => { paymentsConfig().then((c) => setOnline(!!c.enabled)) }, [])
   if (!cart) return <div className="empty big">🛒<p>Your cart is empty</p><small>Add items from any shop to get started</small></div>
@@ -363,7 +374,7 @@ function Cart({ db, user, cart, openShop, onPlaced }) {
     if (payment === 'UPI' && !upiConfirmed) return alert("Please confirm you've completed the UPI payment first")
     setPlacing(true)
     if (!user.address) updateUser(user.id, { address })
-    const res = await placeOrder({ address, payment, note, promoCode: promo?.code })
+    const res = await placeOrder({ address, payment, note, promoCode: promo?.code, lat: dloc?.lat ?? user.lat, lng: dloc?.lng ?? user.lng })
     setPlacing(false)
     if (res.error) {
       if (/promo/i.test(res.error)) setPromo(null)
@@ -507,7 +518,7 @@ function MyOrders({ db, user, open }) {
         const shop = db.shops.find((s) => s.id === o.shopId)
         return (
           <button key={o.id} className="card order-card" onClick={() => open(o.id)}>
-            <div className="row"><b>{shop?.icon} {shop?.name}</b><StatusBadge s={o.status} /></div>
+            <div className="row"><b>{shop?.icon} {shop?.name}</b><span><EtaChip o={o} shop={shop} /> <StatusBadge s={o.status} /></span></div>
             <small>{o.items.map((i) => `${i.name} × ${i.qty}`).join(', ')}</small>
             <div className="row"><small>#{o.code} · {timeAgo(o.createdAt)}</small><b>{money(o.total)}</b></div>
           </button>
@@ -515,6 +526,48 @@ function MyOrders({ db, user, open }) {
       })}
     </>
   )
+}
+
+// Expected arrival = order time + shop's packing time + travel time by distance.
+function orderEta(o, shop) {
+  const km = shop ? distanceKm(o.lat, o.lng, shop.lat, shop.lng) : null
+  const mins = etaWithDistance(shop?.eta ?? 30, km).max
+  return { mins, due: o.createdAt + mins * 60000 }
+}
+const ACTIVE = ['placed', 'accepted', 'packed', 'picked_up', 'out_for_delivery']
+const STEP_TEXT = {
+  placed: 'Waiting for the shop to accept…', accepted: 'Shop accepted — packing your items', packed: 'Packed — waiting for pickup',
+  picked_up: 'Picked up — on the way', out_for_delivery: 'Out for delivery — almost there!',
+}
+
+function OrderTimer({ o, shop }) {
+  const now = useNow(1000)
+  if (o.status === 'delivered') {
+    const at = o.deliveredAt || o.history.find((h) => h.status === 'delivered')?.at
+    return at ? <div className="timer done">✅ Delivered in <b>{Math.max(1, Math.round((at - o.createdAt) / 60000))} min</b></div> : null
+  }
+  if (!ACTIVE.includes(o.status)) return null
+  const { mins, due } = orderEta(o, shop)
+  const left = due - now
+  const pct = Math.min(100, Math.max(3, ((now - o.createdAt) / (mins * 60000)) * 100))
+  const mm = Math.floor(Math.abs(left) / 60000), ss = Math.floor((Math.abs(left) % 60000) / 1000)
+  return (
+    <div className={'timer' + (left < 0 ? ' late' : '')}>
+      <small>{STEP_TEXT[o.status]}</small>
+      {left >= 0
+        ? <div className="timer-clock">{String(mm).padStart(2, '0')}<span>:</span>{String(ss).padStart(2, '0')}<small>min left</small></div>
+        : <div className="timer-clock small">Running ~{mm + 1} min late</div>}
+      <div className="timer-bar"><i style={{ width: pct + '%' }} /></div>
+      <small>Expected by <b>{new Date(due).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</b>{left < 0 ? ' · Shop is on it, sorry for the wait' : ''}</small>
+    </div>
+  )
+}
+
+function EtaChip({ o, shop }) {
+  const now = useNow(30000)
+  if (!ACTIVE.includes(o.status)) return null
+  const left = Math.round((orderEta(o, shop).due - now) / 60000)
+  return <span className="eta-chip">⏱ {left > 0 ? `${left} min` : 'arriving'}</span>
 }
 
 function TrackOrder({ db, id, back }) {
@@ -529,6 +582,7 @@ function TrackOrder({ db, id, back }) {
         <p className="muted">{shop?.icon} {shop?.name} · 📞 {shop?.phone}</p>
         {o.status === 'delivered' && <div className="success">🎉 Delivered! Thank you for shopping with Mana Bazar.</div>}
         <OnlinePaymentStatus o={o} />
+        <OrderTimer o={o} shop={shop} />
         <Tracker o={o} />
         <small className="muted">Live updates: when the shop owner changes status, it shows here.</small>
         {o.status === 'placed' && (
