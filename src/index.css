@@ -335,3 +335,9 @@ html.no-anim *, html.no-anim *::before, html.no-anim *::after { animation: none 
 .shop-notice { background: linear-gradient(90deg, #fff3e0, #ffe0b2); color: #bf360c; font-weight: 700; padding: 10px 12px; border-radius: 12px; margin: 10px 0; animation: riseIn .35s ease both; }
 .hit-shop { display: block; color: #555; font-size: 12px; margin-top: 2px; }
 .search-hit { animation-duration: .25s; }
+.partner-cta { display: block; text-align: center; margin: 14px auto 0; max-width: 420px; padding: 12px; border-radius: 12px; background: #fff; color: var(--ink); text-decoration: none; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.partner-cta b { color: var(--brand); }
+.center-text { text-align: center; font-size: 13px; }
+.auth-hero.role-owner { background: linear-gradient(135deg, #1b5e20, #43a047); }
+.auth-hero.role-delivery { background: linear-gradient(135deg, #0d47a1, #1e88e5); }
+.auth-hero.role-admin { background: linear-gradient(135deg, #263238, #455a64); }
