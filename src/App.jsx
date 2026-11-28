@@ -27,12 +27,12 @@ function MainApp() {
 
   return (
     <div className="app">
-      <header className="topbar">
+      <header className={'topbar role-' + user.role}>
         <div className="brand">
-          <span className="logo">🛍️</span>
+          <img className="logo-img" src="/logo.png" alt="" width="38" height="38" />
           <div>
-            <b>Mana Bazar</b>
-            <small>{user.role === 'admin' ? 'Admin Panel' : user.role === 'owner' ? 'Shop Partner' : 'All shops, one app'}</small>
+            <b>Mana Bazar <span className="te">మన బజార్</span></b>
+            <small>{user.role === 'admin' ? 'Admin Panel' : user.role === 'owner' ? 'Shop Partner' : 'మన ఊరి షాపులు · ఇంటికే డెలివరీ'}</small>
           </div>
         </div>
         <div className="topbar-right">
